@@ -28,21 +28,37 @@ No X6, cada perfil define: DPI, polling rate, tempo de resposta do clique,
 tempo até dormir, ripple control e angle snap. Não é preciso configurar nada
 no software oficial.
 
-## Requisitos
-
-- Windows 10 ou 11
-- Python **3.9+ 64-bit** com **tkinter** (marcado por padrão no instalador do
-  python.org como "tcl/tk and IDLE"). Se não tiver Python, o `install.bat`
-  oferece instalar pelo winget.
-
 ## Instalação
 
-1. Baixe o projeto (**Code > Download ZIP**) e extraia.
-2. Dê dois cliques em **`install.bat`**.
+1. Baixe o **`Instalar Attack Shark.exe`** na página de
+   [Releases](https://github.com/Vitordotpy/Attack-Shark-Profile-Switcher/releases).
+2. Dê dois cliques nele e siga as telas: **Próximo**, **Instalar**, **Concluir**.
 
-O instalador baixa as dependências, faz o programa iniciar junto com o
-Windows, cria atalhos na área de trabalho e no Menu Iniciar e já abre o
-programa.
+Não precisa de Python nem de administrador. O instalador coloca o programa em
+`%LOCALAPPDATA%\Programs\Attack Shark`, cria o atalho **Attack Shark** na área
+de trabalho e no Menu Iniciar, liga a inicialização com o Windows (opcional) e
+já deixa o programa rodando. Rodar o instalador de novo atualiza o programa e
+mantém seus perfis e jogos, que ficam em `%APPDATA%\Attack Shark`.
+
+> Como o instalador não tem assinatura digital, o Windows pode mostrar
+> "O Windows protegeu o computador". Clique em **Mais informações** >
+> **Executar assim mesmo**.
+
+**Desinstalar:** Configurações do Windows > Aplicativos > Aplicativos
+instalados > **Attack Shark Profile Switcher** > Desinstalar.
+
+### Rodando pelo código (Python)
+
+Para quem prefere não usar o instalador ou quer mexer no código:
+
+- Windows 10 ou 11 e Python **3.9+ 64-bit** com **tkinter** ("tcl/tk and IDLE"
+  no instalador do python.org).
+- Baixe o projeto (**Code > Download ZIP**), extraia e dê dois cliques em
+  **`install.bat`**. Ele instala as dependências (e o Python, pelo winget, se
+  faltar), liga a inicialização com o Windows, cria atalhos e abre o programa.
+
+Não use as duas formas ao mesmo tempo. O instalador `.exe` fecha e remove a
+versão em Python se encontrar uma.
 
 ## Tela de configurações
 
@@ -140,6 +156,24 @@ python sharkctl.py list       # mostra as interfaces HID encontradas
 python switcher.py --dry-run  # registra as decisões sem mexer no mouse
 python switcher.py --no-tray  # roda sem ícone na bandeja (avisos continuam)
 python profiles_editor.py     # abre a tela de configurações
+```
+
+## Gerando os executáveis
+
+```bash
+python build.py
+```
+
+Cria um ambiente virtual próprio (`.venv-build`), instala as dependências e o
+PyInstaller e gera `dist\Instalar Attack Shark.exe`. O programa em si
+(`Attack Shark.exe`) é gerado como pasta e vai compactado dentro do
+instalador. O `Attack Shark.exe` também aceita:
+
+```bash
+"Attack Shark.exe" --settings          # abre a tela de configurações
+"Attack Shark.exe" --uninstall         # desinstala (o que o Windows chama)
+"Instalar Attack Shark.exe" --silent   # instala sem telas (--no-desktop,
+                                       # --no-start-menu, --no-startup, --dir)
 ```
 
 ## Notas técnicas

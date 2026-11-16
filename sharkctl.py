@@ -167,7 +167,15 @@ X6_DEFAULTS = {
     ],
 }
 
-_CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
+import app_paths  # noqa: E402
+
+_CONFIG_PATH = app_paths.CONFIG_PATH
+
+
+def set_config_path(path: str) -> None:
+    """Point the X6 profile lookup at another config.json (switcher --config)."""
+    global _CONFIG_PATH
+    _CONFIG_PATH = path
 
 
 def x6_config(path: str | None = None) -> dict:

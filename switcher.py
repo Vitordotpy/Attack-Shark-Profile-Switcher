@@ -27,15 +27,16 @@ from PIL import Image
 
 import psutil
 
+import app_paths
 import detect_games
 import overlay as overlay_module
 import sharkctl
 from winhid import HidError
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-CONFIG_PATH = os.path.join(HERE, "config.json")
-LOG_DIR = os.path.join(os.environ.get("LOCALAPPDATA", HERE), "shark-profile-switcher")
-LOG_PATH = os.path.join(LOG_DIR, "switcher.log")
+HERE = app_paths.CODE_DIR
+CONFIG_PATH = app_paths.CONFIG_PATH
+LOG_DIR = app_paths.LOG_DIR
+LOG_PATH = app_paths.LOG_PATH
 
 DEFAULT_CONFIG = {
     "default_profile": 1,
@@ -163,6 +164,9 @@ def boot_status() -> tuple[bool, str]:
     tool only ever creates the shortcut, so an entry elsewhere is something
     this checkbox could not speak to anyway.
     """
+    if app_paths.FROZEN:
+        # The installed .exe starts through the HKCU Run key, not a shortcut.
+        return _frozen_boot_status()
     if not os.path.exists(BOOT_SHORTCUT_PATH):
         return False, "no startup shortcut"
     if _boot_shortcut_blocked():
@@ -170,6 +174,11 @@ def boot_status() -> tuple[bool, str]:
     if not _boot_shortcut_is_ours():
         return False, "the startup shortcut points at another copy"
     return True, ""
+
+
+def _frozen_boot_status() -> tuple[bool, str]:
+    import setup_common
+    return setup_common.run_at_login_status(sys.executable)
 
 
 def is_boot_enabled() -> bool:
@@ -184,6 +193,15 @@ def set_boot_enabled(enable: bool) -> tuple[bool, str]:
     enable_start_at_boot.ps1 / disable_start_at_boot.ps1 - that knows how to
     create or remove the shortcut, matching install.ps1 and manual use.
     """
+    if app_paths.FROZEN:
+        import setup_common
+        try:
+            setup_common.set_run_at_login(sys.executable, enable)
+        except OSError as exc:
+            return False, str(exc)
+        enabled, reason = boot_status()
+        return (True, "") if enabled == enable else (False, reason or "the change did not take effect")
+
     script = os.path.join(
         HERE, "enable_start_at_boot.ps1" if enable else "disable_start_at_boot.ps1")
     # -NoProfile matters here: loading the user's PowerShell profile is most of
@@ -399,7 +417,7 @@ def run_tray(switcher: Switcher, popup: overlay_module.Overlay) -> None:
                        else "desktop"))
         return f"Attack Shark - Profile {switcher.applied or '?'} ({state})"
 
-    logo_path = os.path.join(HERE, "assets", "logo.png")
+    logo_path = app_paths.asset("logo.png")
     icon_image = Image.open(logo_path)
 
     icon = pystray.Icon(
@@ -509,13 +527,9 @@ def run_tray(switcher: Switcher, popup: overlay_module.Overlay) -> None:
         # window saves.
         if editor[0] is not None and editor[0].poll() is None:
             return                  # already open
-        exe = sys.executable
-        windowless = os.path.join(os.path.dirname(exe), "pythonw.exe")
-        if os.path.exists(windowless):
-            exe = windowless
         try:
             editor[0] = subprocess.Popen(
-                [exe, os.path.join(HERE, "profiles_editor.py"), "--config", CONFIG_PATH])
+                app_paths.self_command("--settings", "--config", CONFIG_PATH))
         except OSError:
             log.exception("could not open the settings window")
 
@@ -565,21 +579,43 @@ def main() -> int:
     parser.add_argument("--config", help="use an alternate config file")
     parser.add_argument("--allow-multiple", action="store_true",
                         help="skip the single-instance check (for testing)")
+    parser.add_argument("--settings", action="store_true",
+                        help="open the settings window instead of the tray app")
+    parser.add_argument("--uninstall", action="store_true",
+                        help="remove the installed app (used by Windows' Installed apps)")
+    parser.add_argument("--quiet", action="store_true",
+                        help="with --uninstall: no questions")
     args = parser.parse_args()
 
     if args.config:
         global CONFIG_PATH
         CONFIG_PATH = os.path.abspath(args.config)
+    else:
+        app_paths.ensure_config()
+    sharkctl.set_config_path(CONFIG_PATH)
+
+    if args.uninstall:
+        import uninstall
+        return uninstall.run(quiet=args.quiet)
+    if args.settings:
+        import profiles_editor
+        return profiles_editor.run(CONFIG_PATH)
 
     setup_logging()
 
     # Before anything with a side effect: no logging setup beyond the file, no
     # device access, no Tk thread, no tray icon.
     if not args.allow_multiple and not acquire_single_instance():
-        log.info("another instance is already running - exiting")
+        log.info("another instance is already running - opening its settings window")
         if sys.stderr:                  # absent under pythonw.exe
             print("Attack Shark profile switcher is already running.",
                   file=sys.stderr)
+        # Double-clicking the desktop icon while it runs should show something.
+        if not args.no_tray:
+            try:
+                subprocess.Popen(app_paths.self_command("--settings", "--config", CONFIG_PATH))
+            except OSError:
+                pass
         return 0
 
     # Logged every run: a start-at-boot problem is otherwise invisible until a
@@ -597,7 +633,7 @@ def main() -> int:
     # surfaces any initialisation failure at startup instead of mid-game.
     popup = overlay_module.Overlay(
         duration_ms=config["popup_duration_ms"],
-        logo_path=os.path.join(HERE, "assets", "logo.png"),
+        logo_path=app_paths.asset("logo.png"),
         enabled=config["popup_enabled"])
     popup.start()
     switcher._on_game_switch = lambda profile, context: popup.show(
