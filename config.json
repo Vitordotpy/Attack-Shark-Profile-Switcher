@@ -1,40 +1,40 @@
 {
-    "default_profile":  1,
-    "game_profile":  2,
-    "poll_seconds":  2,
-    "popup_enabled":  true,
-    "popup_duration_ms":  10000,
-    "games":  [
-                  "cs2.exe"
-              ],
-    "x6":  {
-               "dpi_stages":  [
-                                  800,
-                                  1200,
-                                  1600,
-                                  3200,
-                                  5600,
-                                  400
-                              ],
-               "profiles":  [
-                                {
-                                    "name":  "Normal",
-                                    "dpi":  800,
-                                    "polling":  500,
-                                    "key_response_ms":  8,
-                                    "deep_sleep_min":  10,
-                                    "ripple":  true,
-                                    "angle_snap":  false
-                                },
-                                {
-                                    "name":  "Jogo",
-                                    "dpi":  1600,
-                                    "polling":  1000,
-                                    "key_response_ms":  4,
-                                    "deep_sleep_min":  15,
-                                    "ripple":  false,
-                                    "angle_snap":  false
-                                }
-                            ]
-           }
+  "default_profile": 1,
+  "game_profile": 2,
+  "poll_seconds": 2,
+  "popup_enabled": true,
+  "popup_duration_ms": 10000,
+  "games": [
+    "cs2.exe"
+  ],
+  "x6": {
+    "dpi_stages": [
+      800,
+      1200,
+      1600,
+      3200,
+      5600,
+      400
+    ],
+    "profiles": [
+      {
+        "name": "Normal",
+        "dpi": 800,
+        "polling": 500,
+        "key_response_ms": 8,
+        "deep_sleep_min": 10,
+        "ripple": true,
+        "angle_snap": false
+      },
+      {
+        "name": "Jogo",
+        "dpi": 1600,
+        "polling": 1000,
+        "key_response_ms": 4,
+        "deep_sleep_min": 15,
+        "ripple": false,
+        "angle_snap": false
+      }
+    ]
+  }
 }

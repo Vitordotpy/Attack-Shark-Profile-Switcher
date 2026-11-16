@@ -1,86 +1,99 @@
-![Logo](/assets/logo.png?raw=true "Title")
+![Logo](assets/logo.png?raw=true "Attack Shark Profile Switcher")
 
-# Attack Shark V8 — automatic profile switcher
+# Attack Shark Profile Switcher — V8 e X6
 
-> **Attack Shark X6 (versao modificada):** tambem funciona com o X6, pelo
-> receptor 2.4G ou pelo cabo. Clique no icone da bandeja (ou botao direito >
-> **Settings**) para abrir a tela de configuracoes, com as abas **Perfis**
-> (criar, editar e testar perfis no mouse antes de salvar, e escolher qual
-> usar fora e dentro dos jogos), **Jogos** (lista de jogos e deteccao
-> automatica na Steam/Epic) e **Logs** (atividade ao vivo). Ao salvar, o
-> switcher aplica sozinho, sem reiniciar. Tambem abre com
-> `python profiles_editor.py`.
-> O X6 nao guarda perfis no mouse, entao os
-> perfis dele ficam no `config.json`, na secao `"x6"`: DPI, `polling`
-> (125/250/500/1000), `key_response_ms` (par, 2 a 20), `deep_sleep_min`
-> (1 a 15), `ripple` e `angle_snap` (true/false). `dpi_stages` sao os 6
-> estagios do botao de DPI. Perfil 1 = desktop, perfil 2 = jogo (ou o que
-> estiver em `default_profile` / `game_profile`). Nao precisa configurar
-> nada no app da Attack Shark.
+Troca o perfil do mouse Attack Shark sozinho: quando você abre um jogo, o
+mouse vai para o perfil de jogo (ex.: 1000 Hz, DPI de mira); quando fecha,
+volta para o perfil do dia a dia (ex.: 500 Hz, para economizar bateria).
+Fica um ícone na bandeja do Windows e uma tela de configurações com abas
+para perfis, jogos e logs.
 
-For Attack Shark mice, tested and working on the Attack Shark V8.
+> **English:** automatic, game-aware profile switcher for Attack Shark mice.
+> Works with the **V8** (onboard profiles) and the **X6** (profiles stored in
+> `config.json` and sent to the mouse on each switch). Includes a settings
+> window to create and edit profiles, manage the games list and watch logs.
+> Fork of [alexandrewillame/Attack-Shark-Profile-Switcher](https://github.com/alexandrewillame/Attack-Shark-Profile-Switcher).
 
-The Attack Shark V8 mouse have several onboard profiles (DPI, polling rate, 
-button mapping), but switching between them is only allowed manually via 
-the Attack Shark Mouse Hub software. This tool switches automatically: 
-it automatically detects when you launch a game and switch to your gaming
-profile (e.g. 8KHz polling), and flips it back to your desktop profile (e.g.
-125Hz, for battery life) when you quit.
+O programa fala direto com o mouse pelo receptor USB. O software oficial da
+Attack Shark **não precisa ficar aberto**.
 
-It talks to the mouse directly over its USB receiver. The Attack Shark Hub 
-software is only needed to set up what each profile contains, it is not 
-necessary when this tool is running although they can both be used at 
-the same time.
+## Mouses suportados
 
-## Requirements
+| Mouse | Como funcionam os perfis | Conexão |
+|---|---|---|
+| **Attack Shark V8** | 4 perfis guardados no próprio mouse, configurados no Attack Shark Mouse Hub | receptor 8K |
+| **Attack Shark X6** | o X6 guarda só uma configuração, então os perfis ficam no `config.json` e são enviados inteiros a cada troca | receptor 2.4G ou cabo USB |
 
-- Windows 10 or 11
-- Python **3.9+, 64-bit**, including **tkinter** (ticked by default in the
-  python.org installer as "tcl/tk and IDLE")
-- An Attack Shark V8 with its 8K wireless dongle
+No X6, cada perfil define: DPI, polling rate, tempo de resposta do clique,
+tempo até dormir, ripple control e angle snap. Não é preciso configurar nada
+no software oficial.
 
-## Install
+## Requisitos
 
-Double-click **`install.bat`**. It installs everything needed, sets the app
-to start automatically when you log in, adds a shortcut to your desktop and
-Start Menu, and launches it.
+- Windows 10 ou 11
+- Python **3.9+ 64-bit** com **tkinter** (marcado por padrão no instalador do
+  python.org como "tcl/tk and IDLE"). Se não tiver Python, o `install.bat`
+  oferece instalar pelo winget.
 
-## Setup
+## Instalação
 
-1. In the ATTACK SHARK MOUSE HUB, configure Profile 1 (desktop) and Profile 2
-   (gaming) the way you want them — DPI, polling rate, button mapping.
-2. Add your games from the tray menu's **Detect games** — it scans your
-   installed Steam and Epic library and fills in `config.json` for you.
-   **Double-check the result**: the guess is a heuristic and can occasionally
-   pick the wrong `.exe`. Add anything it missed by hand.
-3. Launch a game and confirm the popup overlay appears at the bottom right
-   corner of the screen
+1. Baixe o projeto (**Code > Download ZIP**) e extraia.
+2. Dê dois cliques em **`install.bat`**.
 
-## How to use
+O instalador baixa as dependências, faz o programa iniciar junto com o
+Windows, cria atalhos na área de trabalho e no Menu Iniciar e já abre o
+programa.
 
-A tray icon shows the active profile:
+## Tela de configurações
 
-![Tray menu](/assets/screenshot1.png?raw=true "Tray menu")
+Clique no ícone da bandeja (ou botão direito > **Settings**). A tela tem três
+abas:
 
-- **Auto (game-aware)** — the normal mode.
-- **Pin to Profile 1–4** — hold one profile and suspend automatic switching.
-- **Show popups** — mute or unmute the popup overlay for this session.
-- **Start at boot** — check or uncheck to control whether it launches at login.
-- **Detect games** — rescan for installed games and add any new ones.
-- **Edit games list** — opens `config.json`.
-- **Open log** — for troubleshooting.
-- **Quit** — also puts the mouse back on your desktop profile.
+- **Perfis**: criar, duplicar, reordenar e remover perfis, e editar DPI,
+  polling, resposta do clique, tempo até dormir, ripple e angle snap. O botão
+  **Testar no mouse** aplica o perfil na hora, antes de salvar. Também é aqui
+  que se escolhe qual perfil usar **fora de jogos** e **em jogos**, e os 6
+  estágios do botão de DPI.
+- **Jogos**: lista de executáveis que ativam o perfil de jogo. Dá para
+  adicionar na mão ou usar **Detectar jogos instalados** (Steam e Epic).
+- **Logs**: atividade do programa ao vivo, colorida (trocas de perfil, jogos
+  detectados, avisos e erros).
 
-## The popup overlay
+Ao salvar (botão **Salvar** ou `Ctrl+S`), o programa percebe a mudança e
+aplica em até 2 segundos, sem reiniciar. No canto superior aparece se o mouse
+está conectado.
 
-When a game starts or exits, a small card appears briefly in the corner of
-your screen, naming the new profile and the game (or "Desktop"):
+A tela também abre sem a bandeja:
 
-![Profile switch popup](/assets/screenshot2.png?raw=true "Profile switch popup")
+```bash
+python profiles_editor.py
+```
 
-It only appears on an actual game transition — entering or leaving a game.
+## Menu da bandeja
+
+![Menu da bandeja](assets/screenshot1.png?raw=true "Menu da bandeja")
+
+- **Settings**: abre a tela de configurações.
+- **Auto (game-aware)**: modo normal, troca sozinho conforme o jogo.
+- **Pin to Profile N**: trava num perfil e pausa a troca automática.
+- **Show popups**: liga ou desliga o aviso na tela nesta sessão.
+- **Start at boot**: iniciar junto com o Windows.
+- **Detect games**: procura jogos instalados e adiciona os novos.
+- **Edit games list**: abre o `config.json`.
+- **Open log**: abre a pasta do log.
+- **Quit**: fecha o programa e volta o mouse para o perfil do dia a dia.
+
+## Aviso na tela
+
+Ao entrar ou sair de um jogo, aparece um cartão no canto inferior direito com
+o perfil novo e o nome do jogo (ou "Desktop"):
+
+![Aviso de troca de perfil](assets/screenshot2.png?raw=true "Aviso de troca de perfil")
 
 ## config.json
+
+A tela de configurações edita tudo isso. Se preferir editar na mão, salve o
+arquivo em UTF-8.
 
 ```json
 {
@@ -89,31 +102,68 @@ It only appears on an actual game transition — entering or leaving a game.
   "poll_seconds": 2,
   "popup_enabled": true,
   "popup_duration_ms": 10000,
-  "games": ["cs2.exe"]
+  "games": ["cs2.exe"],
+  "x6": {
+    "dpi_stages": [800, 1200, 1600, 3200, 5600, 400],
+    "profiles": [
+      { "name": "Normal", "dpi": 800,  "polling": 500,  "key_response_ms": 8,
+        "deep_sleep_min": 10, "ripple": true,  "angle_snap": false },
+      { "name": "Jogo",   "dpi": 1600, "polling": 1000, "key_response_ms": 4,
+        "deep_sleep_min": 15, "ripple": false, "angle_snap": false }
+    ]
+  }
 }
 ```
 
-`games` are executable names, matched case-insensitively — no paths. To find
-a game's executable, launch it and look in Task Manager → Details.
+| Campo | Significado |
+|---|---|
+| `default_profile` | perfil usado fora de jogos (1 = primeiro da lista) |
+| `game_profile` | perfil usado enquanto um jogo da lista estiver aberto |
+| `poll_seconds` | de quantos em quantos segundos procura jogos abertos |
+| `games` | nomes dos executáveis, sem pasta, sem diferenciar maiúsculas. Para descobrir, abra o jogo e veja em Gerenciador de Tarefas > Detalhes |
+| `x6.dpi_stages` | os 6 estágios do botão de DPI do X6 (múltiplos de 50, de 50 a 12800) |
+| `x6.profiles[].dpi` | DPI do perfil. Se não estiver em `dpi_stages`, ocupa o estágio 1 enquanto o perfil estiver ativo |
+| `x6.profiles[].polling` | 125, 250, 500 ou 1000 Hz |
+| `x6.profiles[].key_response_ms` | tempo de resposta do clique: número par de 2 a 20 |
+| `x6.profiles[].deep_sleep_min` | minutos sem uso até o mouse dormir: 1 a 15 |
+| `x6.profiles[].ripple` / `angle_snap` | `true` ou `false` |
 
-Save the file as UTF-8.
+No V8, o conteúdo de cada perfil continua sendo configurado no Attack Shark
+Mouse Hub; a seção `x6` é ignorada.
 
-## Notes
-
-- Tested and working on Attack Shark V8 with Mouse Firmware version V3.03,
-  Receiver firmware version v3.00 and Attack Shark Mouse Hub V1.0.2.0.
-
-## Start at boot
-
-Toggle this any time from the tray menu's Start at boot checkbox. 
-
-## Command line
-
-For scripting or troubleshooting:
+## Linha de comando
 
 ```bash
-python sharkctl.py 3          # switch to Profile 3
-python sharkctl.py get        # read the active profile
-python switcher.py --dry-run  # log decisions without touching the mouse
-python switcher.py --no-tray  # run headless (popups still shown)
+python sharkctl.py 2          # vai para o perfil 2
+python sharkctl.py get        # lê o perfil ativo (só no V8; o X6 não informa)
+python sharkctl.py list       # mostra as interfaces HID encontradas
+python switcher.py --dry-run  # registra as decisões sem mexer no mouse
+python switcher.py --no-tray  # roda sem ícone na bandeja (avisos continuam)
+python profiles_editor.py     # abre a tela de configurações
 ```
+
+## Notas técnicas
+
+- **V8:** testado pelo autor original com firmware do mouse V3.03, firmware do
+  receptor v3.00 e Attack Shark Mouse Hub V1.0.2.0.
+- **X6:** testado com o receptor 2.4G (VID `1D57`, PID `FA60`); o cabo usa o
+  PID `FA61`. O protocolo foi capturado do software oficial (`X6.exe`):
+  feature reports `0x04` (DPI, ripple, angle snap), `0x06` (polling) e `0x05`
+  (resposta do clique, deep sleep e efeito de luz), cada um terminando com uma
+  soma de 16 bits. Detalhes em `sharkctl.py`.
+- **X6, valores não capturados:** 250 Hz e resposta de 2 a 4 ms seguem a mesma
+  regra dos valores capturados, mas não foram vistos sendo enviados pelo app
+  oficial. Se notar comportamento estranho, use 500/1000 Hz e 6/8 ms.
+- **X6:** enviar resposta do clique ou deep sleep coloca a luz no efeito
+  "breathing", porque os três vão no mesmo comando. O motion sync não é
+  alterado.
+
+## Créditos
+
+Baseado no [Attack Shark Profile Switcher](https://github.com/alexandrewillame/Attack-Shark-Profile-Switcher)
+de **alexandrewillame** (suporte ao V8, detecção de jogos, bandeja e avisos).
+Suporte ao X6 e tela de configurações por **Vitordotpy**.
+
+## Licença
+
+[MIT](LICENSE).
