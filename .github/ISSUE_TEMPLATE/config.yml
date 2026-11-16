@@ -1,0 +1,10 @@
+# The forms above cover most cases; a blank issue stays available for
+# developers who prefer free text.
+blank_issues_enabled: true
+contact_links:
+  - name: 📖 Guia do projeto (instalação, configurações, perguntas comuns)
+    url: https://github.com/Vitordotpy/Attack-Shark-Profile-Switcher#readme
+    about: Leia antes de abrir uma issue - talvez a resposta já esteja lá.
+  - name: ⬇️ Baixar a versão mais recente
+    url: https://github.com/Vitordotpy/Attack-Shark-Profile-Switcher/releases/latest
+    about: Muitos problemas já foram resolvidos em versões novas.

@@ -1,0 +1,35 @@
+name: "❓ Dúvida"
+description: Não sabe como fazer algo? Pergunte aqui.
+title: "[Dúvida] "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Antes de perguntar, vale dar uma olhada no [guia do projeto](https://github.com/Vitordotpy/Attack-Shark-Profile-Switcher#readme):
+        muitas respostas já estão lá. Não achou? Pode perguntar sem medo.
+
+  - type: textarea
+    id: pergunta
+    attributes:
+      label: Qual é a sua dúvida?
+      placeholder: "Ex.: como faço para o perfil de jogo usar 1600 DPI?"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: sistema
+    attributes:
+      label: Qual sistema?
+      options:
+        - Windows
+        - Linux
+
+  - type: dropdown
+    id: mouse
+    attributes:
+      label: Qual mouse?
+      options:
+        - Attack Shark X6
+        - Attack Shark V8
+        - Outro

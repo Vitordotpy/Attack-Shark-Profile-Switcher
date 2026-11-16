@@ -376,7 +376,7 @@ class App:
         repo = f"https://github.com/{app_paths.GITHUB_REPO}"
         for k, (text, url) in enumerate((("Pagina do projeto", repo),
                                          ("Versoes publicadas", repo + "/releases"),
-                                         ("Relatar um problema", repo + "/issues"))):
+                                         ("Relatar um problema", repo + "/issues/new/choose"))):
             ttk.Button(links, text=text, style="Ghost.TButton",
                        command=lambda u=url: webbrowser.open(u)).grid(
                 row=1, column=k, padx=(0, 8), pady=(10, 0), sticky="w")

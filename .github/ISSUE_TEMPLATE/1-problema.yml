@@ -1,0 +1,108 @@
+name: "🐞 Algo não está funcionando"
+description: O perfil não troca, o mouse não é encontrado, uma tela dá erro...
+title: "[Problema] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Obrigado por avisar! Responda o que souber: **nenhum campo exige conhecimento técnico**.
+        Se não souber alguma resposta, deixe em branco.
+
+  - type: dropdown
+    id: tipo
+    attributes:
+      label: O que está acontecendo?
+      options:
+        - O perfil não troca quando abro ou fecho um jogo
+        - O programa diz que o mouse não foi encontrado
+        - A configuração (DPI, polling...) não muda no mouse
+        - A tela de configurações não abre ou dá erro
+        - O programa não abre junto com o Windows / sistema
+        - O instalador não funciona
+        - A atualização automática falhou
+        - O ícone não aparece perto do relógio / na bandeja
+        - Outra coisa
+    validations:
+      required: true
+
+  - type: textarea
+    id: descricao
+    attributes:
+      label: Conte o que aconteceu
+      description: Com suas palavras. O que você esperava e o que aconteceu de verdade?
+      placeholder: "Ex.: abri o Valorant e o mouse continuou no perfil Normal, não foi para o Jogo."
+    validations:
+      required: true
+
+  - type: textarea
+    id: passos
+    attributes:
+      label: Como fazer o problema acontecer de novo (opcional)
+      placeholder: |
+        1. Abri o programa
+        2. Cliquei em ...
+        3. Aconteceu ...
+
+  - type: dropdown
+    id: mouse
+    attributes:
+      label: Qual mouse você usa?
+      options:
+        - Attack Shark X6 (pelo receptor sem fio)
+        - Attack Shark X6 (pelo cabo)
+        - Attack Shark V8
+        - Outro (escreva na descrição)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: sistema
+    attributes:
+      label: Qual sistema?
+      options:
+        - Windows 11
+        - Windows 10
+        - Linux
+    validations:
+      required: true
+
+  - type: input
+    id: linux
+    attributes:
+      label: Se for Linux, qual distribuição e ambiente gráfico?
+      placeholder: "Ex.: Ubuntu 24.04 com GNOME, Fedora 41 com KDE"
+
+  - type: input
+    id: versao
+    attributes:
+      label: Versão do programa
+      description: Abra as configurações (clique no ícone perto do relógio) e veja a aba **Sobre**.
+      placeholder: "Ex.: 2.1.0"
+
+  - type: dropdown
+    id: instalacao
+    attributes:
+      label: Como você instalou?
+      options:
+        - Pelo instalador (Instalar Attack Shark.exe)
+        - Pelo install.sh (Linux)
+        - Pelo código em Python (install.bat)
+        - Não sei
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs (ajuda muito!)
+      description: |
+        Abra as configurações > aba **Logs** > botão **Copiar**, e cole aqui.
+        Não tem nada pessoal nos logs: só o que o programa fez com o mouse.
+      render: text
+
+  - type: textarea
+    id: imagens
+    attributes:
+      label: Prints ou vídeo (opcional)
+      description: Arraste imagens para esta caixa. Uma foto da tela com o erro já ajuda.

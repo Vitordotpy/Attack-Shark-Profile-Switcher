@@ -1,0 +1,59 @@
+name: "🖱️ Quero suporte para outro mouse"
+description: Peça para o programa funcionar com outro modelo da Attack Shark.
+title: "[Novo mouse] "
+labels: ["novo mouse"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Para adicionar um mouse novo é preciso descobrir como o app oficial conversa com ele,
+        e isso só dá para fazer com alguém que tenha o mouse em mãos. Quanto mais você puder
+        ajudar, mais rápido sai.
+
+  - type: input
+    id: modelo
+    attributes:
+      label: Modelo do mouse
+      placeholder: "Ex.: Attack Shark R1, X3, X11..."
+    validations:
+      required: true
+
+  - type: input
+    id: link
+    attributes:
+      label: Link do produto ou do software oficial (opcional)
+      placeholder: "https://..."
+
+  - type: checkboxes
+    id: conexao
+    attributes:
+      label: Como ele se conecta?
+      options:
+        - label: Receptor sem fio (2.4G)
+        - label: Cabo USB
+        - label: Bluetooth
+
+  - type: textarea
+    id: ids
+    attributes:
+      label: Identificação USB (opcional, mas ajuda muito)
+      description: |
+        **Windows:** Gerenciador de Dispositivos > Mouses e outros dispositivos apontadores >
+        clique duas vezes no mouse > aba Detalhes > propriedade "IDs de hardware". Copie as linhas.
+        **Linux:** rode `lsusb` no terminal e copie a linha do mouse.
+      placeholder: "Ex.: HID\\VID_1D57&PID_FA60&MI_01"
+      render: text
+
+  - type: textarea
+    id: recursos
+    attributes:
+      label: O que você quer trocar entre os perfis?
+      placeholder: "Ex.: DPI e polling rate. O app oficial também tem perfis guardados no mouse."
+
+  - type: checkboxes
+    id: ajuda
+    attributes:
+      label: Você pode ajudar?
+      options:
+        - label: Posso testar versões de teste e contar se funcionou
+        - label: Posso rodar uma ferramenta de captura enquanto mudo as configurações no app oficial (eu explico o passo a passo)

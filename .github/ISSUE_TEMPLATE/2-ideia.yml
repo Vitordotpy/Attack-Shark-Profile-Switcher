@@ -1,0 +1,53 @@
+name: "💡 Ideia ou pedido de melhoria"
+description: Algo que o programa poderia fazer, ou fazer melhor.
+title: "[Ideia] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Toda ideia é bem-vinda, das pequenas às grandes. Explique do seu jeito.
+
+  - type: textarea
+    id: pedido
+    attributes:
+      label: O que você gostaria?
+      placeholder: "Ex.: poder trocar de perfil com uma tecla do teclado, além da troca automática."
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivo
+    attributes:
+      label: Em que situação isso ajudaria você?
+      placeholder: "Ex.: quando jogo pelo navegador o programa não percebe que é jogo."
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Sobre qual parte do programa?
+      options:
+        - Perfis e configurações do mouse
+        - Detecção de jogos
+        - Tela de configurações (visual, abas, textos)
+        - Ícone e menu perto do relógio
+        - Instalação ou atualização
+        - Linux
+        - Outra / não sei
+    validations:
+      required: true
+
+  - type: dropdown
+    id: importancia
+    attributes:
+      label: Quanto isso faz falta para você?
+      options:
+        - Seria legal ter
+        - Faz bastante diferença
+        - Hoje não consigo usar o programa sem isso
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Algo mais? (opcional)
+      description: Exemplos de outros programas, desenhos, prints... arraste imagens para cá.

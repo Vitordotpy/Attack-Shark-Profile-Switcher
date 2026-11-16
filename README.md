@@ -268,6 +268,21 @@ Quem tem a versão anterior recebe o aviso em até um dia, ou na hora pelo
   "breathing", porque os três vão no mesmo comando. O motion sync não é
   alterado.
 
+## Problemas, ideias e pedidos
+
+Abra uma [issue](https://github.com/Vitordotpy/Attack-Shark-Profile-Switcher/issues/new/choose)
+e escolha um dos formulários. Eles guiam o preenchimento, sem precisar de
+conhecimento técnico:
+
+- **🐞 Algo não está funcionando**: o perfil não troca, o mouse não é
+  encontrado, uma tela dá erro...
+- **💡 Ideia ou pedido de melhoria**: algo que o programa poderia fazer.
+- **🖱️ Quero suporte para outro mouse**: outro modelo da Attack Shark.
+- **❓ Dúvida**: como fazer alguma coisa.
+
+O que mais ajuda num problema é o conteúdo da aba **Logs** (botão **Copiar**).
+O botão **Relatar um problema**, na aba **Sobre**, abre essa página direto.
+
 ## Créditos
 
 Baseado no [Attack Shark Profile Switcher](https://github.com/alexandrewillame/Attack-Shark-Profile-Switcher)
