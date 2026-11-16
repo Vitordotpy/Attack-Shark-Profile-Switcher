@@ -15,9 +15,13 @@ import ctypes
 import logging
 import os
 import queue
+import sys
 import threading
 import tkinter as tk
-from ctypes import wintypes
+
+IS_WINDOWS = sys.platform == "win32"
+if IS_WINDOWS:
+    from ctypes import wintypes
 
 from PIL import Image, ImageDraw, ImageFont, ImageTk
 
@@ -44,53 +48,63 @@ SUBTEXT_RGB = (154, 160, 166)
 
 # -- win32 -------------------------------------------------------------------
 
-user32 = ctypes.WinDLL("user32", use_last_error=True)
+if IS_WINDOWS:
 
-SPI_GETWORKAREA = 0x0030
-GWL_EXSTYLE = -20
-WS_EX_NOACTIVATE = 0x08000000
-WS_EX_TOOLWINDOW = 0x00000080
-GA_ROOT = 2
-HWND_TOPMOST = -1
-SWP_NOSIZE = 0x0001
-SWP_NOMOVE = 0x0002
-SWP_NOACTIVATE = 0x0010
-SWP_SHOWWINDOW = 0x0040
+    user32 = ctypes.WinDLL("user32", use_last_error=True)
 
-
-class RECT(ctypes.Structure):
-    _fields_ = [("left", ctypes.c_long), ("top", ctypes.c_long),
-                ("right", ctypes.c_long), ("bottom", ctypes.c_long)]
+    SPI_GETWORKAREA = 0x0030
+    GWL_EXSTYLE = -20
+    WS_EX_NOACTIVATE = 0x08000000
+    WS_EX_TOOLWINDOW = 0x00000080
+    GA_ROOT = 2
+    HWND_TOPMOST = -1
+    SWP_NOSIZE = 0x0001
+    SWP_NOMOVE = 0x0002
+    SWP_NOACTIVATE = 0x0010
+    SWP_SHOWWINDOW = 0x0040
 
 
-user32.SystemParametersInfoW.argtypes = [
-    ctypes.c_uint, ctypes.c_uint, ctypes.c_void_p, ctypes.c_uint]
-user32.GetAncestor.argtypes = [wintypes.HWND, ctypes.c_uint]
-user32.GetAncestor.restype = wintypes.HWND
-user32.SetWindowPos.argtypes = [
-    wintypes.HWND, wintypes.HWND, ctypes.c_int, ctypes.c_int,
-    ctypes.c_int, ctypes.c_int, ctypes.c_uint]
-
-# SetWindowLongPtrW only exists on 64-bit; 32-bit builds export SetWindowLongW.
-if hasattr(user32, "SetWindowLongPtrW"):
-    _get_style = user32.GetWindowLongPtrW
-    _set_style = user32.SetWindowLongPtrW
-else:
-    _get_style = user32.GetWindowLongW
-    _set_style = user32.SetWindowLongW
-_get_style.argtypes = [wintypes.HWND, ctypes.c_int]
-_get_style.restype = ctypes.c_ssize_t
-_set_style.argtypes = [wintypes.HWND, ctypes.c_int, ctypes.c_ssize_t]
-_set_style.restype = ctypes.c_ssize_t
+    class RECT(ctypes.Structure):
+        _fields_ = [("left", ctypes.c_long), ("top", ctypes.c_long),
+                    ("right", ctypes.c_long), ("bottom", ctypes.c_long)]
 
 
-def primary_work_area() -> RECT:
+    user32.SystemParametersInfoW.argtypes = [
+        ctypes.c_uint, ctypes.c_uint, ctypes.c_void_p, ctypes.c_uint]
+    user32.GetAncestor.argtypes = [wintypes.HWND, ctypes.c_uint]
+    user32.GetAncestor.restype = wintypes.HWND
+    user32.SetWindowPos.argtypes = [
+        wintypes.HWND, wintypes.HWND, ctypes.c_int, ctypes.c_int,
+        ctypes.c_int, ctypes.c_int, ctypes.c_uint]
+
+    # SetWindowLongPtrW only exists on 64-bit; 32-bit builds export SetWindowLongW.
+    if hasattr(user32, "SetWindowLongPtrW"):
+        _get_style = user32.GetWindowLongPtrW
+        _set_style = user32.SetWindowLongPtrW
+    else:
+        _get_style = user32.GetWindowLongW
+        _set_style = user32.SetWindowLongW
+    _get_style.argtypes = [wintypes.HWND, ctypes.c_int]
+    _get_style.restype = ctypes.c_ssize_t
+    _set_style.argtypes = [wintypes.HWND, ctypes.c_int, ctypes.c_ssize_t]
+    _set_style.restype = ctypes.c_ssize_t
+
+
+class _Area:
+    def __init__(self, left, top, right, bottom):
+        self.left, self.top, self.right, self.bottom = left, top, right, bottom
+
+
+def primary_work_area(widget: tk.Misc | None = None):
     """Working area (taskbar excluded) of the primary monitor.
 
     Always the primary, regardless of which screen the cursor or a game is on -
     the popup should be findable in a fixed place, not chase the mouse across a
     multi-monitor setup.
     """
+    if not IS_WINDOWS:
+        # No portable work-area query in Tk; leave room for a bottom panel.
+        return _Area(0, 0, widget.winfo_screenwidth(), widget.winfo_screenheight() - 48)
     rect = RECT()
     user32.SystemParametersInfoW(SPI_GETWORKAREA, 0, ctypes.byref(rect), 0)
     return rect
@@ -100,8 +114,10 @@ def primary_work_area() -> RECT:
 
 
 def _load_font(size: int, bold: bool = False):
-    names = (("segoeuib.ttf", "arialbd.ttf", "seguisb.ttf") if bold
-             else ("segoeui.ttf", "arial.ttf"))
+    names = (("segoeuib.ttf", "arialbd.ttf", "seguisb.ttf", "DejaVuSans-Bold.ttf",
+              "NotoSans-Bold.ttf", "LiberationSans-Bold.ttf") if bold
+             else ("segoeui.ttf", "arial.ttf", "DejaVuSans.ttf", "NotoSans-Regular.ttf",
+                   "LiberationSans-Regular.ttf"))
     for name in names:
         try:
             return ImageFont.truetype(name, size)
@@ -123,7 +139,7 @@ def render_card(headline: str, subtext: str, logo: Image.Image | None) -> Image.
                  measure.textlength(subtext, font=FONT_SUB))
     width = int(min(CARD_W_MAX, max(CARD_W_MIN, text_left + widest + 22)))
 
-    image = Image.new("RGB", (width, CARD_H), KEY_RGB)
+    image = Image.new("RGB", (width, CARD_H), KEY_RGB if IS_WINDOWS else BG_RGB)
     draw = ImageDraw.Draw(image)
     draw.rounded_rectangle([0, 0, width - 1, CARD_H - 1], radius=RADIUS,
                            fill=BG_RGB, outline=BORDER_RGB, width=1)
@@ -219,9 +235,16 @@ class Overlay:
         win = tk.Toplevel(self._root)
         win.overrideredirect(True)
         win.attributes("-topmost", True)
-        win.attributes("-transparentcolor", KEY_COLOR)
-        win.configure(bg=KEY_COLOR)
-        self._label = tk.Label(win, bd=0, highlightthickness=0, bg=KEY_COLOR)
+        if IS_WINDOWS:
+            win.attributes("-transparentcolor", KEY_COLOR)
+        else:
+            try:
+                win.attributes("-type", "notification")   # X11: no focus, no taskbar
+            except tk.TclError:
+                pass
+        bg = KEY_COLOR if IS_WINDOWS else "#%02x%02x%02x" % BG_RGB
+        win.configure(bg=bg)
+        self._label = tk.Label(win, bd=0, highlightthickness=0, bg=bg)
         self._label.pack()
         win.update_idletasks()
         win.withdraw()
@@ -233,8 +256,11 @@ class Overlay:
 
         overrideredirect alone does not stop Windows activating the window on
         show; WS_EX_NOACTIVATE does. WS_EX_TOOLWINDOW additionally keeps it out
-        of the Alt-Tab list.
+        of the Alt-Tab list. On Linux overrideredirect already keeps the window
+        manager (and focus) away from it.
         """
+        if not IS_WINDOWS:
+            return
         try:
             hwnd = user32.GetAncestor(self._win.winfo_id(), GA_ROOT) \
                 or self._win.winfo_id()
@@ -266,7 +292,7 @@ class Overlay:
         self._photo = ImageTk.PhotoImage(image)
         self._label.configure(image=self._photo)
 
-        work = primary_work_area()
+        work = primary_work_area(self._win)
         x = work.right - image.width - MARGIN
         y = work.bottom - CARD_H - MARGIN
         self._win.geometry(f"{image.width}x{CARD_H}+{x}+{y}")
@@ -274,6 +300,11 @@ class Overlay:
         self._win.attributes("-alpha", 1.0)
         self._win.deiconify()
         self._deny_activation()
+
+        if not IS_WINDOWS:
+            self._win.lift()
+            self._win.after(self.duration_ms, self._begin_fade, generation)
+            return
 
         # Raise to topmost explicitly rather than via lift(), which activates.
         try:

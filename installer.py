@@ -7,8 +7,10 @@ shortcuts, optionally starts the app with Windows, and registers it under
 Settings > Apps > Installed apps so it can be removed like any program.
 
 Unattended use (and testing):
-    "Instalar Attack Shark.exe" --silent [--dir PATH] [--no-desktop]
+    "Instalar Attack Shark.exe" --silent [--update] [--dir PATH] [--no-desktop]
                                 [--no-start-menu] [--no-startup] [--no-launch]
+    --update keeps the shortcuts and start-with-Windows choice as they are
+    (what the in-app updater uses).
 """
 
 from __future__ import annotations
@@ -384,13 +386,21 @@ def main() -> int:
     parser.add_argument("--no-start-menu", action="store_true")
     parser.add_argument("--no-startup", action="store_true")
     parser.add_argument("--no-launch", action="store_true")
+    parser.add_argument("--update", action="store_true",
+                        help="with --silent: keep the current shortcuts / startup choices")
     args = parser.parse_args()
 
     if args.silent:
         target = args.dir or setup_common.installed_dir() or setup_common.default_install_dir()
+        desktop, start_menu, startup = (not args.no_desktop, not args.no_start_menu,
+                                        not args.no_startup)
+        if args.update and setup_common.installed_dir():
+            exe_now = os.path.join(target, app_paths.EXE_NAME)
+            desktop = os.path.exists(setup_common.desktop_shortcut())
+            start_menu = os.path.exists(setup_common.start_menu_shortcut())
+            startup = setup_common.run_at_login_status(exe_now)[0]
         try:
-            exe = install(os.path.abspath(target), not args.no_desktop,
-                          not args.no_start_menu, not args.no_startup)
+            exe = install(os.path.abspath(target), desktop, start_menu, startup)
         except InstallError as exc:
             _say(f"error: {exc}")
             return 1

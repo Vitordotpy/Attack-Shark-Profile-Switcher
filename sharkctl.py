@@ -9,13 +9,15 @@ Protocol captured from the vendor Hub - see capture/FINDINGS.md.
 
 from __future__ import annotations
 
-import ctypes
 import json
 import os
 import sys
 import time
 
-from winhid import HidDevice, HidError, HidInfo, enumerate_hid, hid
+if sys.platform == "win32":
+    from winhid import HidDevice, HidError, HidInfo, enumerate_hid
+else:
+    from linhid import HidDevice, HidError, HidInfo, enumerate_hid
 
 VID = 0x3554
 PID = 0xF517
@@ -280,10 +282,7 @@ def x6_apply(profile: dict, stages: list[int], info: HidInfo | None = None) -> N
             if i:
                 time.sleep(0.15)        # the mouse drops reports sent back to back
             # Sent at the report's own length, exactly as the vendor app does.
-            buf = ctypes.create_string_buffer(pkt, len(pkt))
-            if not hid.HidD_SetFeature(dev._handle, buf, len(pkt)):
-                raise HidError(f"X6 rejected report 0x{pkt[0]:02X}: "
-                               f"error {ctypes.get_last_error()}")
+            dev.send_feature(pkt)
 
 
 def profile_count() -> int:

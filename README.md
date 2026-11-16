@@ -1,16 +1,17 @@
 ![Logo](assets/logo.png?raw=true "Attack Shark Profile Switcher")
 
-# Attack Shark Profile Switcher — V8 e X6
+# Attack Shark Profile Switcher — V8 e X6, Windows e Linux
 
 Troca o perfil do mouse Attack Shark sozinho: quando você abre um jogo, o
 mouse vai para o perfil de jogo (ex.: 1000 Hz, DPI de mira); quando fecha,
 volta para o perfil do dia a dia (ex.: 500 Hz, para economizar bateria).
-Fica um ícone na bandeja do Windows e uma tela de configurações com abas
-para perfis, jogos e logs.
+Fica um ícone na bandeja do sistema, uma tela de configurações com abas para
+perfis, jogos, logs e atualizações, e o programa se atualiza sozinho.
 
 > **English:** automatic, game-aware profile switcher for Attack Shark mice.
 > Works with the **V8** (onboard profiles) and the **X6** (profiles stored in
-> `config.json` and sent to the mouse on each switch). Includes a settings
+> `config.json` and sent to the mouse on each switch), on **Windows** (one-file
+> installer, self-updating) and **Linux** (`install.sh`). Includes a settings
 > window to create and edit profiles, manage the games list and watch logs.
 > Fork of [alexandrewillame/Attack-Shark-Profile-Switcher](https://github.com/alexandrewillame/Attack-Shark-Profile-Switcher).
 
@@ -28,7 +29,7 @@ No X6, cada perfil define: DPI, polling rate, tempo de resposta do clique,
 tempo até dormir, ripple control e angle snap. Não é preciso configurar nada
 no software oficial.
 
-## Instalação
+## Instalação no Windows
 
 1. Baixe o **`Instalar Attack Shark.exe`** na página de
    [Releases](https://github.com/Vitordotpy/Attack-Shark-Profile-Switcher/releases).
@@ -60,9 +61,49 @@ Para quem prefere não usar o instalador ou quer mexer no código:
 Não use as duas formas ao mesmo tempo. O instalador `.exe` fecha e remove a
 versão em Python se encontrar uma.
 
+## Instalação no Linux
+
+> O suporte ao Linux é novo e **ainda não foi testado em um computador Linux
+> com o mouse conectado**. Se algo não funcionar, abra uma
+> [issue](https://github.com/Vitordotpy/Attack-Shark-Profile-Switcher/issues)
+> com o que aparece na aba **Logs**.
+
+1. Baixe o código-fonte da versão mais recente em
+   [Releases](https://github.com/Vitordotpy/Attack-Shark-Profile-Switcher/releases)
+   (ou `git clone`) e extraia.
+2. No terminal, dentro da pasta:
+
+   ```bash
+   ./install.sh
+   ```
+
+O instalador:
+
+- confere o Python 3.9+, o `venv` e o `tkinter`, e diz o comando da sua
+  distro se faltar algo (ex.: `sudo apt install python3-tk`);
+- copia o programa para `~/.local/share/attack-shark`, com um ambiente Python
+  próprio (não mexe no Python do sistema);
+- instala, com `sudo`, **uma regra udev** que deixa o usuário logado falar com
+  o mouse sem ser root (`/etc/udev/rules.d/70-attack-shark.rules`);
+- cria o atalho no menu de aplicativos, o ícone na área de trabalho e o início
+  automático com o sistema (os dois últimos são opcionais);
+- abre o programa.
+
+Os perfis e jogos ficam em `~/.config/attack-shark/config.json` e os logs em
+`~/.local/state/attack-shark/`. Rodar o `install.sh` de novo atualiza o
+programa. Para remover: `~/.local/share/attack-shark/uninstall.sh`.
+
+**Ícone na bandeja:** no GNOME é preciso a extensão *AppIndicator and
+KStatusNotifierItem Support*. KDE, Cinnamon, XFCE e outros já mostram. O
+`install.sh` avisa se faltar a biblioteca `AppIndicator`.
+
+**Jogos no Linux:** a detecção procura na Steam (nativa e Flatpak) e na Heroic
+(jogos da Epic). Jogos pelo Proton/Wine são reconhecidos pelo nome do `.exe`;
+jogos nativos, pelo nome do processo.
+
 ## Tela de configurações
 
-Clique no ícone da bandeja (ou botão direito > **Settings**). A tela tem três
+Clique no ícone da bandeja (ou botão direito > **Settings**). A tela tem quatro
 abas:
 
 - **Perfis**: criar, duplicar, reordenar e remover perfis, e editar DPI,
@@ -75,6 +116,9 @@ abas:
 - **Logs**: atividade do programa ao vivo, colorida (trocas de perfil, jogos
   detectados, avisos e erros).
 
+- **Sobre**: versão instalada, **Verificar agora** e **Atualizar agora**, a
+  opção de verificar atualizações sozinho e links do projeto.
+
 Ao salvar (botão **Salvar** ou `Ctrl+S`), o programa percebe a mudança e
 aplica em até 2 segundos, sem reiniciar. No canto superior aparece se o mouse
 está conectado.
@@ -85,10 +129,27 @@ A tela também abre sem a bandeja:
 python profiles_editor.py
 ```
 
+## Atualizações
+
+O programa consulta as [Releases](https://github.com/Vitordotpy/Attack-Shark-Profile-Switcher/releases)
+do GitHub 20 segundos depois de abrir e depois uma vez por dia. É uma única
+consulta à página pública do projeto; nenhum dado seu é enviado.
+
+- **Windows:** quando há versão nova, aparece uma notificação e o item
+  **Update to X.Y.Z** no menu do ícone (ou **Atualizar agora** na aba Sobre).
+  Um clique baixa o instalador da Release e atualiza sem telas: o programa
+  fecha, troca os arquivos e abre de novo, mantendo perfis, jogos, atalhos e a
+  inicialização com o Windows.
+- **Linux:** o aviso abre a página da versão nova; para atualizar, baixe o
+  código e rode o `install.sh` de novo.
+
+Dá para desligar a verificação na aba **Sobre**.
+
 ## Menu da bandeja
 
 ![Menu da bandeja](assets/screenshot1.png?raw=true "Menu da bandeja")
 
+- **Update to X.Y.Z**: aparece só quando há versão nova.
 - **Settings**: abre a tela de configurações.
 - **Auto (game-aware)**: modo normal, troca sozinho conforme o jogo.
 - **Pin to Profile N**: trava num perfil e pausa a troca automática.
@@ -158,7 +219,7 @@ python switcher.py --no-tray  # roda sem ícone na bandeja (avisos continuam)
 python profiles_editor.py     # abre a tela de configurações
 ```
 
-## Gerando os executáveis
+## Gerando os executáveis (Windows)
 
 ```bash
 python build.py
@@ -176,10 +237,25 @@ instalador. O `Attack Shark.exe` também aceita:
                                        # --no-start-menu, --no-startup, --dir)
 ```
 
+## Publicando uma versão nova
+
+1. Aumente `APP_VERSION` em `app_paths.py` (ex.: `2.1.0` → `2.2.0`).
+2. Rode `python build.py` no Windows.
+3. No GitHub, crie uma Release com a tag `v2.2.0` e anexe o
+   `dist\Instalar Attack Shark.exe`. O GitHub troca os espaços do nome por
+   pontos, e o atualizador aceita assim mesmo.
+
+Quem tem a versão anterior recebe o aviso em até um dia, ou na hora pelo
+**Verificar agora**.
+
 ## Notas técnicas
 
 - **V8:** testado pelo autor original com firmware do mouse V3.03, firmware do
   receptor v3.00 e Attack Shark Mouse Hub V1.0.2.0.
+- **Linux:** o acesso ao mouse é pelo `/dev/hidraw*`. Como o Linux tem um nó
+  por interface USB (e não um por coleção HID, como o Windows), o programa lê
+  o descritor HID em `/sys/class/hidraw/*/device/report_descriptor` para achar
+  o canal de configuração (`linhid.py`).
 - **X6:** testado com o receptor 2.4G (VID `1D57`, PID `FA60`); o cabo usa o
   PID `FA61`. O protocolo foi capturado do software oficial (`X6.exe`):
   feature reports `0x04` (DPI, ripple, angle snap), `0x06` (polling) e `0x05`

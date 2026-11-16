@@ -19,12 +19,27 @@ import os
 import re
 import sys
 
-STEAM_ROOTS = [
-    r"C:\Program Files (x86)\Steam",
-    r"C:\Program Files\Steam",
-    os.path.expandvars(r"%LOCALAPPDATA%\Steam"),
-]
+IS_WINDOWS = sys.platform == "win32"
+if IS_WINDOWS:
+    STEAM_ROOTS = [
+        r"C:\Program Files (x86)\Steam",
+        r"C:\Program Files\Steam",
+        os.path.expandvars(r"%LOCALAPPDATA%\Steam"),
+    ]
+else:
+    _home = os.path.expanduser("~")
+    STEAM_ROOTS = [
+        os.path.join(_home, ".steam", "steam"),
+        os.path.join(_home, ".local", "share", "Steam"),
+        os.path.join(_home, ".var", "app", "com.valvesoftware.Steam", ".local", "share", "Steam"),
+    ]
 EPIC_MANIFESTS = r"C:\ProgramData\Epic\EpicGamesLauncher\Data\Manifests"
+# Heroic Games Launcher (Epic / GOG on Linux) keeps its install lists here.
+HEROIC_FILES = [
+    os.path.expanduser("~/.config/heroic/legendaryConfig/legendary/installed.json"),
+    os.path.expanduser("~/.var/app/com.heroicgameslauncher.hgl/config/heroic/"
+                       "legendaryConfig/legendary/installed.json"),
+]
 
 # Helper binaries that ship alongside games but are never the game itself.
 # The SDK/tool words matter as much as the installer ones: Valve ships
@@ -38,7 +53,8 @@ SKIP_PATTERNS = re.compile(
     r"workshop|legacy|tool|shader|_build_|cache|dump|test)",
     re.IGNORECASE)
 
-PREFERRED_DIRS = ("binaries\\win64", "binaries\\win32", "bin\\win64", "bin")
+PREFERRED_DIRS = ("binaries/win64", "binaries/win32", "bin/win64", "bin/x64",
+                  "bin/linux", "bin")
 
 
 def steam_libraries() -> list[str]:
@@ -54,8 +70,10 @@ def steam_libraries() -> list[str]:
                 libraries.append(match.group(1).replace("\\\\", "\\"))
     seen, unique = set(), []
     for lib in libraries:
-        if lib.lower() not in seen and os.path.isdir(lib):
-            seen.add(lib.lower())
+        key = os.path.realpath(lib)
+        key = key.lower() if IS_WINDOWS else key
+        if key not in seen and os.path.isdir(lib):
+            seen.add(key)
             unique.append(lib)
     return unique
 
@@ -86,9 +104,27 @@ def steam_games() -> list[tuple[str, str]]:
     return games
 
 
+def heroic_games() -> list[tuple[str, str]]:
+    """Linux: Epic games installed through Heroic (legendary's installed.json)."""
+    games: list[tuple[str, str]] = []
+    for path in HEROIC_FILES:
+        try:
+            with open(path, encoding="utf-8") as handle:
+                data = json.load(handle)
+        except (OSError, ValueError):
+            continue
+        for entry in (data.values() if isinstance(data, dict) else []):
+            exe, name = entry.get("executable"), entry.get("title")
+            if exe and name:
+                games.append((name, os.path.basename(exe.replace("\\", "/"))))
+    return games
+
+
 def epic_games() -> list[tuple[str, str]]:
     """Epic manifests name their launch executable outright."""
     games: list[tuple[str, str]] = []
+    if not IS_WINDOWS:
+        return heroic_games()
     if not os.path.isdir(EPIC_MANIFESTS):
         return games
     for entry in os.listdir(EPIC_MANIFESTS):
@@ -113,7 +149,7 @@ def score(path: str, root: str, game: str = "") -> tuple[int, int]:
     size - size is only a tiebreaker, since tool binaries are often the largest
     files in an install.
     """
-    relative = os.path.relpath(path, root).lower()
+    relative = os.path.relpath(path, root).lower().replace("\\", "/")
     stem = os.path.splitext(os.path.basename(path))[0].lower()
     normalised = re.sub(r"[^a-z0-9]", "", game.lower())
     flat_stem = re.sub(r"[^a-z0-9]", "", stem)
@@ -127,13 +163,24 @@ def score(path: str, root: str, game: str = "") -> tuple[int, int]:
         elif len(flat_stem) > 3 and flat_stem in normalised.replace(" ", ""):
             name_bonus = 4
 
-    depth_bonus = 2 if os.sep not in relative else 0
+    depth_bonus = 2 if "/" not in relative else 0
     dir_bonus = 3 if any(p in relative for p in PREFERRED_DIRS) else 0
     try:
         size = os.path.getsize(path)
     except OSError:
         size = 0
     return (name_bonus + depth_bonus + dir_bonus, size)
+
+
+def _is_native_linux_binary(path: str, name: str) -> bool:
+    """An extensionless ELF executable (native Linux game binary)."""
+    if IS_WINDOWS or "." in name or not os.access(path, os.X_OK):
+        return False
+    try:
+        with open(path, "rb") as handle:
+            return handle.read(4) == b"\x7fELF"
+    except OSError:
+        return False
 
 
 def find_executable(root: str, game: str = "", max_depth: int = 4) -> str | None:
@@ -146,8 +193,11 @@ def find_executable(root: str, game: str = "", max_depth: int = 4) -> str | None
             continue
         dirs[:] = [d for d in dirs if not SKIP_PATTERNS.search(d)]
         for name in files:
-            if name.lower().endswith(".exe") and not SKIP_PATTERNS.search(name):
-                candidates.append(os.path.join(current, name))
+            if SKIP_PATTERNS.search(name):
+                continue
+            full = os.path.join(current, name)
+            if name.lower().endswith(".exe") or _is_native_linux_binary(full, name):
+                candidates.append(full)
     if not candidates:
         return None
     best = max(candidates, key=lambda p: score(p, root, game))

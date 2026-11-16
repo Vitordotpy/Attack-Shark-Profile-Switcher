@@ -21,17 +21,19 @@ import subprocess
 import sys
 import threading
 import time
-import winreg
 from logging.handlers import RotatingFileHandler
 from PIL import Image
 
 import psutil
 
 import app_paths
+
+if app_paths.IS_WINDOWS:
+    import winreg
 import detect_games
 import overlay as overlay_module
 import sharkctl
-from winhid import HidError
+from sharkctl import HidError
 
 HERE = app_paths.CODE_DIR
 CONFIG_PATH = app_paths.CONFIG_PATH
@@ -47,7 +49,11 @@ DEFAULT_CONFIG = {
     # nested dict in a user's config would replace these defaults wholesale.
     "popup_enabled": True,
     "popup_duration_ms": 1800,
+    "check_updates": True,
 }
+
+UPDATE_FIRST_CHECK_S = 20           # after start, so login is not slowed down
+UPDATE_INTERVAL_S = 24 * 60 * 60
 
 log = logging.getLogger("switcher")
 
@@ -65,6 +71,8 @@ def acquire_single_instance() -> bool:
     never a stale lock to detect and clean up.
     """
     global _instance_mutex
+    if not app_paths.IS_WINDOWS:
+        return _acquire_lock_file()
     error_already_exists = 183
 
     kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
@@ -86,6 +94,22 @@ def acquire_single_instance() -> bool:
     return True
 
 
+def _acquire_lock_file() -> bool:
+    """Linux: an exclusive flock, released by the kernel when we exit."""
+    global _instance_mutex
+    import fcntl
+    run_dir = os.environ.get("XDG_RUNTIME_DIR") or app_paths.LOG_DIR
+    os.makedirs(run_dir, exist_ok=True)
+    handle = open(os.path.join(run_dir, "attack-shark.lock"), "w")
+    try:
+        fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        handle.close()
+        return False
+    _instance_mutex = handle
+    return True
+
+
 # The file name enable_start_at_boot.ps1 creates in the Startup folder - kept
 # in sync with that script rather than queried from it, since it never changes.
 BOOT_SHORTCUT_NAME = "Attack Shark Profile Switcher.lnk"
@@ -101,12 +125,14 @@ STARTUP_APPROVED_KEY = (r"Software\Microsoft\Windows\CurrentVersion\Explorer"
 
 
 def startup_folder() -> str:
-    """The user's Startup folder, honouring shell-folder redirection.
+    """The user's Startup folder, honouring shell-folder redirection (Windows).
 
     Read from the shell's own record rather than joined onto %APPDATA%, so this
     agrees with the [Environment]::GetFolderPath('Startup') the PowerShell
     scripts use - that follows a redirected folder where the join would not.
     """
+    if not app_paths.IS_WINDOWS:
+        return ""
     try:
         with winreg.OpenKey(
                 winreg.HKEY_CURRENT_USER,
@@ -164,6 +190,9 @@ def boot_status() -> tuple[bool, str]:
     tool only ever creates the shortcut, so an entry elsewhere is something
     this checkbox could not speak to anyway.
     """
+    if not app_paths.IS_WINDOWS:
+        import linux_desktop
+        return linux_desktop.autostart_status()
     if app_paths.FROZEN:
         # The installed .exe starts through the HKCU Run key, not a shortcut.
         return _frozen_boot_status()
@@ -193,6 +222,9 @@ def set_boot_enabled(enable: bool) -> tuple[bool, str]:
     enable_start_at_boot.ps1 / disable_start_at_boot.ps1 - that knows how to
     create or remove the shortcut, matching install.ps1 and manual use.
     """
+    if not app_paths.IS_WINDOWS:
+        import linux_desktop
+        return linux_desktop.set_autostart(enable)
     if app_paths.FROZEN:
         import setup_common
         try:
@@ -311,10 +343,18 @@ class Switcher:
     def running_game(self) -> str | None:
         if not self.games:
             return None
-        for proc in psutil.process_iter(["name"]):
+        for proc in psutil.process_iter(["name", "cmdline"]):
             name = proc.info["name"]
             if name and name.lower() in self.games:
                 return name
+            # Linux truncates process names to 15 characters, and games under
+            # Wine/Proton show up as "wine64-preloader" or similar with the
+            # real "Z:\...\game.exe" in the command line - so also try the
+            # basename of the first command-line entries.
+            for arg in (proc.info.get("cmdline") or [])[:2]:
+                base = arg.replace("\\", "/").rsplit("/", 1)[-1].lower()
+                if base in self.games:
+                    return base
         return None
 
     def desired_profile(self) -> int:
@@ -407,6 +447,13 @@ class Switcher:
 
 
 # -- tray -------------------------------------------------------------------
+
+def open_log() -> None:
+    if app_paths.IS_WINDOWS:
+        subprocess.Popen(["explorer", "/select,", LOG_PATH])
+    else:
+        app_paths.open_path(LOG_DIR)
+
 
 def run_tray(switcher: Switcher, popup: overlay_module.Overlay) -> None:
     import pystray
@@ -539,9 +586,84 @@ def run_tray(switcher: Switcher, popup: overlay_module.Overlay) -> None:
 
     switcher._on_reload = on_reload
 
+    # -- updates --------------------------------------------------------------
+    update: list = [None]               # the newer updater.Release, if any
+    updating = [False]
+
+    def check_updates(announce: bool) -> None:
+        import updater
+        try:
+            release = updater.check()
+        except updater.UpdateError as exc:
+            log.info("update check: %s", exc)
+            return
+        if release is None:
+            log.info("update check: up to date (%s)", app_paths.APP_VERSION)
+            return
+        first_time = update[0] is None or update[0].version != release.version
+        update[0] = release
+        log.info("update available: %s -> %s", app_paths.APP_VERSION, release.version)
+        refresh()
+        if announce and first_time:
+            try:
+                icon.notify(f"Versao {release.version} disponivel. Clique com o botao direito "
+                            "no icone > Update.", "Attack Shark")
+            except Exception:
+                pass
+
+    def update_loop() -> None:
+        stop = switcher._stop
+        if stop.wait(UPDATE_FIRST_CHECK_S):
+            return
+        while True:
+            if switcher.config.get("check_updates", True):
+                check_updates(announce=True)
+            if stop.wait(UPDATE_INTERVAL_S):
+                return
+
+    def do_update(_icon=None, _item=None) -> None:
+        import updater
+        release = update[0]
+        if release is None or updating[0]:
+            return
+        if not updater.can_self_update(release):
+            updater.open_release_page(release)
+            return
+        updating[0] = True
+        refresh()
+
+        def worker() -> None:
+            try:
+                try:
+                    icon.notify(f"Baixando a versao {release.version}...", "Attack Shark")
+                except Exception:
+                    pass
+                path = updater.download_installer(release)
+                log.info("starting update to %s", release.version)
+                updater.run_installer(path)     # closes this app and restarts it
+            except updater.UpdateError as exc:
+                log.warning("update failed: %s", exc)
+                try:
+                    icon.notify(f"A atualizacao falhou: {exc}", "Attack Shark")
+                except Exception:
+                    pass
+                updating[0] = False
+                refresh()
+        threading.Thread(target=worker, name="update", daemon=True).start()
+
+    def update_label(_item) -> str:
+        release = update[0]
+        if release is None:
+            return "Update"
+        return (f"Updating to {release.version}..." if updating[0]
+                else f"⬆  Update to {release.version}")
+
     def build_menu() -> pystray.Menu:
         return pystray.Menu(
             pystray.MenuItem(lambda _item: title(), None, enabled=False),
+            pystray.MenuItem(update_label, do_update,
+                             visible=lambda _item: update[0] is not None,
+                             enabled=lambda _item: not updating[0]),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("Auto (game-aware)", choose(None),
                              checked=is_selected(None), radio=True),
@@ -556,10 +678,9 @@ def run_tray(switcher: Switcher, popup: overlay_module.Overlay) -> None:
             pystray.MenuItem("Settings (profiles, games, logs)", edit_profiles, default=True),
             pystray.MenuItem("Detect games", detect_games_now),
             pystray.MenuItem("Edit games list",
-                             lambda _i, _it: os.startfile(CONFIG_PATH)),
+                             lambda _i, _it: app_paths.open_path(CONFIG_PATH)),
             pystray.MenuItem("Open log",
-                             lambda _i, _it: subprocess.Popen(
-                                 ["explorer", "/select,", LOG_PATH])),
+                             lambda _i, _it: open_log()),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("Quit", quit_app),
         )
@@ -567,6 +688,7 @@ def run_tray(switcher: Switcher, popup: overlay_module.Overlay) -> None:
     icon.menu = build_menu()
 
     threading.Thread(target=switcher.run, daemon=True).start()
+    threading.Thread(target=update_loop, name="update-check", daemon=True).start()
     icon.run()
 
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ctypes
+import sys
 import tkinter as tk
 from tkinter import ttk
 
@@ -19,7 +20,9 @@ ACCENT_HI = "#5aa5ff"
 GREEN = "#3ecf8e"
 AMBER = "#f5b942"
 RED = "#ff5c6c"
-FONT = "Segoe UI"
+IS_WINDOWS = sys.platform == "win32"
+FONT = "Segoe UI" if IS_WINDOWS else "Noto Sans"     # Tk falls back if missing
+MONO = "Consolas" if IS_WINDOWS else "DejaVu Sans Mono"
 
 
 def dark_title_bar(root: tk.Tk) -> None:
@@ -110,6 +113,19 @@ def setup_style(root: tk.Tk) -> None:
 
     s.configure("Vertical.TScrollbar", background=CARD2, troughcolor=CARD, bordercolor=CARD,
                 arrowcolor=MUTED, lightcolor=CARD2, darkcolor=CARD2)
+
+
+def set_window_icon(root: tk.Misc, ico_path: str, png_path: str) -> None:
+    """Window icon: .ico on Windows, PNG elsewhere (Tk on Linux cannot read .ico)."""
+    try:
+        if IS_WINDOWS:
+            root.iconbitmap(ico_path)
+        else:
+            img = tk.PhotoImage(file=png_path)
+            root.iconphoto(True, img)
+            root._icon_ref = img        # keep a reference or Tk drops the image
+    except tk.TclError:
+        pass
 
 
 def card(parent, **grid) -> ttk.Frame:

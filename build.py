@@ -79,6 +79,10 @@ def pyinstaller(py: str, *args: str) -> None:
 
 
 def main() -> int:
+    if sys.platform != "win32":
+        print("build.py gera os executaveis do Windows e precisa rodar no Windows.")
+        print("No Linux, instale pelo codigo com ./install.sh.")
+        return 1
     os.chdir(ROOT)
     os.makedirs(BUILD, exist_ok=True)
     py = venv_python()
@@ -94,6 +98,9 @@ def main() -> int:
         "--hidden-import", "pystray._win32",
         "--hidden-import", "profiles_editor",
         "--hidden-import", "uninstall",
+        "--hidden-import", "updater",
+        "--exclude-module", "linhid",
+        "--exclude-module", "linux_desktop",
     )
     app_dir = os.path.join(app_dist, app_paths.APP_NAME)
 

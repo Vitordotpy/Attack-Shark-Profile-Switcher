@@ -22,7 +22,7 @@ from tkinter import messagebox, ttk
 
 import app_paths
 import sharkctl
-from winhid import HidError
+from sharkctl import HidError
 
 TITLE = "Attack Shark - Configuracoes"
 LOG_PATH = app_paths.LOG_PATH
@@ -33,7 +33,8 @@ NOVO_PERFIL = {"name": "Novo perfil", "dpi": 1600, "polling": 1000, "key_respons
                "deep_sleep_min": 10, "ripple": False, "angle_snap": False}
 
 from ui_theme import (ACCENT, ACCENT_HI, AMBER, BG, CARD, CARD2, FG, FONT, GREEN,  # noqa: E402
-                      INPUT, MUTED, RED, card, dark_title_bar, setup_style, styled_listbox)
+                      INPUT, MONO, MUTED, RED, card, dark_title_bar, set_window_icon,
+                      setup_style, styled_listbox)
 
 
 class App:
@@ -57,12 +58,7 @@ class App:
         root.title(TITLE)
         root.geometry("920x660")
         root.minsize(860, 620)
-        icon = app_paths.asset("logo.ico")
-        if os.path.exists(icon):
-            try:
-                root.iconbitmap(icon)
-            except tk.TclError:
-                pass
+        set_window_icon(root, app_paths.asset("logo.ico"), app_paths.asset("logo.png"))
         root.protocol("WM_DELETE_WINDOW", self.close)
 
         self._build()
@@ -117,12 +113,15 @@ class App:
         self.tab_profiles = ttk.Frame(self.nb, style="Card.TFrame", padding=4)
         self.tab_games = ttk.Frame(self.nb, style="Card.TFrame", padding=4)
         self.tab_logs = ttk.Frame(self.nb, style="Card.TFrame", padding=4)
+        self.tab_about = ttk.Frame(self.nb, style="Card.TFrame", padding=4)
         self.nb.add(self.tab_profiles, text="Perfis")
         self.nb.add(self.tab_games, text="Jogos")
         self.nb.add(self.tab_logs, text="Logs")
+        self.nb.add(self.tab_about, text="Sobre")
         self._build_profiles(self.tab_profiles)
         self._build_games(self.tab_games)
         self._build_logs(self.tab_logs)
+        self._build_about(self.tab_about)
 
         # footer
         foot = ttk.Frame(root, padding=(22, 12, 22, 16))
@@ -264,8 +263,10 @@ class App:
         c.rowconfigure(2, weight=1)
         ttk.Label(c, text="Jogos que ativam o perfil de jogo", style="Section.TLabel").grid(
             row=0, column=0, columnspan=3, sticky="w")
-        ttk.Label(c, text="Nome do executavel, sem a pasta. Para descobrir, abra o jogo e veja "
-                          "Gerenciador de Tarefas > Detalhes.",
+        ttk.Label(c, text=("Nome do executavel, sem a pasta. Para descobrir, abra o jogo e veja "
+                           "Gerenciador de Tarefas > Detalhes." if app_paths.IS_WINDOWS else
+                           "Nome do processo ou do .exe (jogos pelo Proton). Para descobrir, abra "
+                           "o jogo e rode: ps -eo comm,args | grep -i nome"),
                   style="CardMuted.TLabel").grid(row=1, column=0, columnspan=3, sticky="w", pady=(2, 10))
 
         wrap = ttk.Frame(c, style="Card.TFrame")
@@ -310,7 +311,7 @@ class App:
         ttk.Button(bar, text="Abrir pasta", style="Ghost.TButton", command=self.open_log_folder).grid(row=0, column=3)
 
         self.log = tk.Text(c, bg="#0c0e13", fg=MUTED, insertbackground=FG, relief="flat",
-                           borderwidth=0, highlightthickness=0, font=("Consolas", 10),
+                           borderwidth=0, highlightthickness=0, font=(MONO, 10),
                            wrap="none", padx=12, pady=10, state="disabled")
         self.log.grid(row=1, column=0, sticky="nsew")
         sb = ttk.Scrollbar(c, orient="vertical", command=self.log.yview)
@@ -325,6 +326,133 @@ class App:
         self.log.tag_configure("empty", foreground=MUTED, font=(FONT, 10, "italic"))
 
     # ------------------------------------------------------- device status
+
+    # -- about tab ----------------------------------------------------------
+
+    def _build_about(self, tab: ttk.Frame) -> None:
+        tab.columnconfigure(0, weight=1)
+        top = card(tab, row=0, column=0, sticky="ew", padx=8, pady=(8, 4))
+        top.columnconfigure(1, weight=1)
+        try:
+            self._about_logo = tk.PhotoImage(file=app_paths.asset("logo.png")).subsample(3)
+            tk.Label(top, image=self._about_logo, bg=CARD).grid(row=0, column=0, rowspan=3, padx=(0, 18))
+        except tk.TclError:
+            pass
+        ttk.Label(top, text=app_paths.APP_FULL_NAME, style="Section.TLabel",
+                  font=(FONT, 14, "bold")).grid(row=0, column=1, sticky="w")
+        system = "Windows" if app_paths.IS_WINDOWS else "Linux"
+        ttk.Label(top, text=f"Versao {app_paths.APP_VERSION}  \u00b7  {system}",
+                  style="Value.TLabel").grid(row=1, column=1, sticky="w", pady=(4, 0))
+        ttk.Label(top, text="Troca automatica de perfil para mouses Attack Shark V8 e X6. "
+                            "Codigo aberto, licenca MIT.",
+                  style="CardMuted.TLabel").grid(row=2, column=1, sticky="w", pady=(4, 0))
+
+        up = card(tab, row=1, column=0, sticky="ew", padx=8, pady=4)
+        up.columnconfigure(0, weight=1)
+        ttk.Label(up, text="Atualizacoes", style="Section.TLabel").grid(row=0, column=0, columnspan=3, sticky="w")
+        self.update_status = ttk.Label(up, text="Clique em Verificar para procurar uma versao nova.",
+                                       style="Card.TLabel")
+        self.update_status.grid(row=1, column=0, columnspan=3, sticky="w", pady=(10, 0))
+        style = ttk.Style(self.root)
+        style.configure("Upd.Horizontal.TProgressbar", troughcolor=INPUT, background=ACCENT,
+                        bordercolor=INPUT, lightcolor=ACCENT, darkcolor=ACCENT, thickness=6)
+        self.update_bar = ttk.Progressbar(up, style="Upd.Horizontal.TProgressbar", maximum=100)
+        btns = ttk.Frame(up, style="Card.TFrame")
+        btns.grid(row=3, column=0, columnspan=3, sticky="w", pady=(12, 0))
+        self.check_btn = ttk.Button(btns, text="Verificar agora", style="Accent.TButton",
+                                    command=self.check_update)
+        self.check_btn.grid(row=0, column=0)
+        self.install_btn = ttk.Button(btns, text="Atualizar agora", style="Accent.TButton",
+                                      command=self.install_update)
+        self.v_check_updates = tk.BooleanVar(value=bool(self.full.get("check_updates", True)))
+        self.v_check_updates.trace_add("write", lambda *_: self._set_dirty(True))
+        ttk.Checkbutton(up, text="Verificar atualizacoes automaticamente (uma vez por dia)",
+                        variable=self.v_check_updates).grid(row=4, column=0, columnspan=3,
+                                                            sticky="w", pady=(12, 0))
+
+        links = card(tab, row=2, column=0, sticky="ew", padx=8, pady=(4, 8))
+        ttk.Label(links, text="Links", style="Section.TLabel").grid(row=0, column=0, columnspan=3, sticky="w")
+        import webbrowser
+        repo = f"https://github.com/{app_paths.GITHUB_REPO}"
+        for k, (text, url) in enumerate((("Pagina do projeto", repo),
+                                         ("Versoes publicadas", repo + "/releases"),
+                                         ("Relatar um problema", repo + "/issues"))):
+            ttk.Button(links, text=text, style="Ghost.TButton",
+                       command=lambda u=url: webbrowser.open(u)).grid(
+                row=1, column=k, padx=(0, 8), pady=(10, 0), sticky="w")
+        self._release = None
+
+    def check_update(self) -> None:
+        import updater
+        self.check_btn.config(state="disabled", text="Verificando...")
+        self.install_btn.grid_remove()
+
+        def worker():
+            try:
+                result = ("ok", updater.latest_release())
+            except updater.UpdateError as exc:
+                result = ("error", str(exc))
+            self._ui.put(lambda: self._update_checked(*result))
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _update_checked(self, kind: str, value) -> None:
+        import updater
+        self.check_btn.config(state="normal", text="Verificar agora")
+        if kind == "error":
+            self.update_status.config(text=value, foreground=AMBER)
+            return
+        rel = value
+        if not updater.is_newer(rel.version):
+            self.update_status.config(
+                text=f"\u2714  Voce esta na versao mais recente ({app_paths.APP_VERSION}).",
+                foreground=GREEN)
+            return
+        self._release = rel
+        self.update_status.config(text=f"\u2b06  Versao {rel.version} disponivel "
+                                       f"(voce tem a {app_paths.APP_VERSION}).", foreground=ACCENT_HI)
+        self.install_btn.config(text="Atualizar agora" if updater.can_self_update(rel)
+                                else "Abrir pagina da versao")
+        self.install_btn.grid(row=0, column=1, padx=(8, 0))
+
+    def install_update(self) -> None:
+        import updater
+        rel = self._release
+        if rel is None:
+            return
+        if not updater.can_self_update(rel):
+            updater.open_release_page(rel)
+            return
+        if self.dirty and not messagebox.askyesno(
+                TITLE, "Voce tem alteracoes nao salvas, que serao perdidas. Atualizar mesmo assim?"):
+            return
+        self.install_btn.config(state="disabled")
+        self.check_btn.config(state="disabled")
+        self.update_bar.grid(row=2, column=0, columnspan=3, sticky="ew", pady=(10, 0))
+
+        def progress(done, total):
+            pct = int(100 * done / total) if total else 0
+            self._ui.put(lambda: (self.update_bar.configure(value=pct),
+                                  self.update_status.config(text=f"Baixando... {pct}%",
+                                                            foreground=FG)))
+
+        def worker():
+            try:
+                path = updater.download_installer(rel, progress)
+            except updater.UpdateError as exc:
+                msg = str(exc)
+                self._ui.put(lambda: self._update_failed(msg))
+                return
+            self._ui.put(lambda: self.update_status.config(
+                text="Instalando... o Attack Shark vai fechar e abrir de novo sozinho.",
+                foreground=GREEN))
+            updater.run_installer(path)
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _update_failed(self, message: str) -> None:
+        self.update_bar.grid_remove()
+        self.install_btn.config(state="normal")
+        self.check_btn.config(state="normal")
+        self.update_status.config(text=message, foreground=RED)
 
     def _check_device(self) -> None:
         def worker():
@@ -619,7 +747,7 @@ class App:
     def open_log_folder(self) -> None:
         folder = os.path.dirname(LOG_PATH)
         if os.path.isdir(folder):
-            os.startfile(folder)
+            app_paths.open_path(folder)
         else:
             messagebox.showinfo(TITLE, "A pasta de logs ainda nao existe.")
 
@@ -696,6 +824,7 @@ class App:
         full["default_profile"] = self._default_idx + 1
         full["game_profile"] = self._game_idx + 1
         full["games"] = list(self.games)
+        full["check_updates"] = bool(self.v_check_updates.get())
         tmp = self.config_path + ".tmp"
         try:
             with open(tmp, "w", encoding="utf-8") as handle:

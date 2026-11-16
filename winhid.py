@@ -339,6 +339,14 @@ class HidDevice:
         if not hid.HidD_SetFeature(self._handle, buf, size):
             raise HidError(f"HidD_SetFeature failed: error {ctypes.get_last_error()}")
 
+    def send_feature(self, report: bytes) -> None:
+        """Send a feature report exactly as given (byte 0 = report ID), at its
+        own length - the way vendor tools do, rather than padded."""
+        buf = ctypes.create_string_buffer(bytes(report), len(report))
+        if not hid.HidD_SetFeature(self._handle, buf, len(report)):
+            raise HidError(f"feature report 0x{report[0]:02X} rejected: "
+                           f"error {ctypes.get_last_error()}")
+
     def get_feature(self, report_id: int = 0) -> bytes:
         """Read a feature report; returns the payload with the report ID stripped."""
         size = self.info.feature_len
