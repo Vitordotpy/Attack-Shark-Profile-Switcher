@@ -146,8 +146,10 @@ def get_profile(info: HidInfo | None = None, attempts: int = 3) -> int | None:
 #   0x04 (56 bytes): 3,6 = angle snap  4 = ripple  7 = motion sync (left on)
 #                    8-13 = DPI stages (dpi/50 - 1)  24 = active stage (1-based)
 #   0x06 (9 bytes):  06 09 01 c FF-c 00 00 00 00, c = 1000 / polling_hz
-#   0x05 (15 bytes): 3 = light effect (0x60 breathing)  5 = deep sleep minutes
-#                    in the high nibble  10 = key response ms / 2
+#   0x05 (15 bytes): 3 = light effect << 4 (see X6_LED_MODES)
+#                    4 = effect speed, 5 slowest .. 1 fastest
+#                    5 = deep sleep minutes << 4 | brightness (1-8)
+#                    6-8 = colour R, G, B   9 = 01   10 = key response ms / 2
 # --------------------------------------------------------------------------
 
 X6_VID = 0x1D57
@@ -158,6 +160,14 @@ X6_BASE = bytes([
     0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x02, 0xFF, 0x00, 0x00, 0x00, 0xFF, 0x00, 0x00,
     0x00, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0x00, 0xFF, 0xFF, 0x40, 0x00, 0xFF, 0xFF,
     0xFF, 0x01, 0x0E, 0x72, 0x00, 0x00, 0x00, 0x00])
+
+# Light effects of the X6, in the vendor app's order (their value is the index).
+X6_LED_MODES = ["off", "static", "breathing", "neon", "color_breathing",
+                "static_dpi", "breathing_dpi"]
+X6_LED_DEFAULT = {"mode": "breathing_dpi", "color": "#00ff00", "brightness": 8, "speed": 3}
+# Effects where the colour / speed setting does something.
+X6_LED_USES_COLOR = {"static", "breathing"}
+X6_LED_USES_SPEED = {"breathing", "neon", "color_breathing", "breathing_dpi"}
 
 X6_DEFAULTS = {
     "dpi_stages": [800, 1200, 1600, 3200, 5600, 400],
@@ -170,6 +180,7 @@ X6_DEFAULTS = {
 }
 
 import app_paths  # noqa: E402
+from i18n import _  # noqa: E402
 
 _CONFIG_PATH = app_paths.CONFIG_PATH
 
@@ -211,7 +222,27 @@ def validate_x6(cfg: dict) -> dict:
         sleep = p.get("deep_sleep_min")
         if sleep is not None and not 1 <= sleep <= 15:
             raise ValueError(f"x6 profile {n}: deep_sleep_min must be 1-15")
+        led = p.get("led")
+        if led is not None:
+            led = led_settings(led)         # raises ValueError when wrong
     return {"dpi_stages": stages, "profiles": profiles}
+
+
+def led_settings(led: dict | None) -> dict:
+    """A profile's "led" block with defaults filled in, validated."""
+    out = dict(X6_LED_DEFAULT)
+    out.update(led or {})
+    if out["mode"] not in X6_LED_MODES:
+        raise ValueError(f"led.mode must be one of {', '.join(X6_LED_MODES)}")
+    color = str(out["color"]).lstrip("#")
+    if len(color) != 6 or any(c not in "0123456789abcdefABCDEF" for c in color):
+        raise ValueError("led.color must look like #RRGGBB")
+    out["color"] = "#" + color.lower()
+    if not 1 <= int(out["brightness"]) <= 8:
+        raise ValueError("led.brightness must be 1-8")
+    if not 1 <= int(out["speed"]) <= 5:
+        raise ValueError("led.speed must be 1-5")
+    return out
 
 
 def _x6_sum(buf: bytearray, last: int) -> None:
@@ -245,13 +276,126 @@ def x6_packets(profile: dict, stages: list[int]) -> list[bytes]:
         packets.append(bytes([0x06, 0x09, 0x01, c, 0xFF - c, 0, 0, 0, 0]))
 
     resp, sleep = profile.get("key_response_ms"), profile.get("deep_sleep_min")
-    if resp or sleep:
-        resp, sleep = resp or 8, sleep or 10
-        p = bytearray([0x05, 0x0F, 0x01, 0x60, 0x03, (sleep << 4) | 0x08,
-                       0x00, 0xFF, 0x00, 0x01, resp // 2, 0, 0, 0, 0])
+    if resp or sleep or profile.get("led"):
+        # Light, click response and deep sleep share one report, so all three
+        # always travel together; missing ones get the factory defaults.
+        resp, sleep = int(resp or 8), int(sleep or 10)
+        led = led_settings(profile.get("led"))
+        rgb = bytes.fromhex(led["color"][1:])
+        p = bytearray([0x05, 0x0F, 0x01, X6_LED_MODES.index(led["mode"]) << 4,
+                       6 - int(led["speed"]), (sleep << 4) | int(led["brightness"]),
+                       rgb[0], rgb[1], rgb[2], 0x01, resp // 2, 0, 0, 0, 0])
         _x6_sum(p, 10)
         packets.append(bytes(p))
     return packets
+
+
+# -- X6 macros ----------------------------------------------------------------
+#
+#   0x08 (59 bytes): button map, 18 slots of 3 bytes from byte 3, 16-bit sum at
+#                    57-58. A slot holds the button's function; "12 00 <slot>"
+#                    makes it play the macro stored under that slot number.
+#   0x09:            one macro, a 128-byte block sent as 3 reports
+#                    (09 40 <slot> 00 + 60 bytes, 09 40 <slot> 01 + 60 bytes,
+#                    09 0C <slot> 02 + 8 bytes). In the block: byte 4 = times
+#                    to play, byte 25 = number of events, then 2 bytes per event
+#                    (bit 7 = release, bits 0-6 = delay after it in 10 ms units;
+#                    then the USB HID key code), and a 16-bit sum at 126-127.
+
+X6_BUTTON_DEFAULTS = [bytes.fromhex(h) for h in (
+    "020000", "030000", "040000", "0d0000", "0e0000", "0f0000", "060000", "050000",
+    "3c0000", "010000", "010000", "010000", "010000", "010000", "010000", "010000",
+    "0a0000", "090000")]
+# Buttons that can hold a macro, and their slot (1-based) in the button map.
+X6_MACRO_SLOTS = {"forward": 7, "backward": 8}
+X6_MACRO_MAX_EVENTS = 50
+X6_MACRO_MAX_DELAY_MS = 1270
+
+# USB HID keyboard usage codes, by the names stored in config.json.
+HID_KEYS = {chr(ord("A") + i): 0x04 + i for i in range(26)}
+HID_KEYS.update({str((i + 1) % 10): 0x1E + i for i in range(10)})
+HID_KEYS.update({f"F{i}": 0x39 + i for i in range(1, 13)})
+HID_KEYS.update({
+    "ENTER": 0x28, "ESC": 0x29, "BACKSPACE": 0x2A, "TAB": 0x2B, "SPACE": 0x2C,
+    "MINUS": 0x2D, "EQUAL": 0x2E, "LBRACKET": 0x2F, "RBRACKET": 0x30, "BACKSLASH": 0x31,
+    "SEMICOLON": 0x33, "QUOTE": 0x34, "GRAVE": 0x35, "COMMA": 0x36, "PERIOD": 0x37,
+    "SLASH": 0x38, "CAPSLOCK": 0x39, "PRINTSCREEN": 0x46, "SCROLLLOCK": 0x47,
+    "PAUSE": 0x48, "INSERT": 0x49, "HOME": 0x4A, "PAGEUP": 0x4B, "DELETE": 0x4C,
+    "END": 0x4D, "PAGEDOWN": 0x4E, "RIGHT": 0x4F, "LEFT": 0x50, "DOWN": 0x51, "UP": 0x52,
+    "LCTRL": 0xE0, "LSHIFT": 0xE1, "LALT": 0xE2, "LWIN": 0xE3,
+    "RCTRL": 0xE4, "RSHIFT": 0xE5, "RALT": 0xE6, "RWIN": 0xE7,
+})
+
+
+def _sum16(data: bytes) -> bytes:
+    total = sum(data)
+    return bytes([(total >> 8) & 0xFF, total & 0xFF])
+
+
+def validate_macro(macro: dict) -> dict:
+    """{"loops": 1-255, "events": [{"key", "action": press|release, "delay"}]}."""
+    loops = int(macro.get("loops", 1))
+    if not 1 <= loops <= 255:
+        raise ValueError("macro loops must be 1-255")
+    events = macro.get("events") or []
+    if not events:
+        raise ValueError("macro has no steps")
+    if len(events) > X6_MACRO_MAX_EVENTS:
+        raise ValueError(f"macro has more than {X6_MACRO_MAX_EVENTS} steps")
+    clean = []
+    for ev in events:
+        key = str(ev.get("key", "")).upper()
+        if key not in HID_KEYS:
+            raise ValueError(f"unknown key in macro: {ev.get('key')}")
+        if ev.get("action") not in ("press", "release"):
+            raise ValueError("macro step action must be press or release")
+        delay = int(ev.get("delay", 10))
+        clean.append({"key": key, "action": ev["action"],
+                      "delay": max(10, min(X6_MACRO_MAX_DELAY_MS, delay))})
+    return {"loops": loops, "events": clean}
+
+
+def x6_macro_packets(slot: int, macro: dict) -> list[bytes]:
+    macro = validate_macro(macro)
+    block = bytearray(128)
+    block[4] = macro["loops"]
+    block[25] = len(macro["events"])
+    for i, ev in enumerate(macro["events"]):
+        units = max(1, min(127, round(ev["delay"] / 10)))
+        block[26 + 2 * i] = (0x80 if ev["action"] == "release" else 0) | units
+        block[27 + 2 * i] = HID_KEYS[ev["key"]]
+    block[126:128] = _sum16(block[:126])
+    return [bytes([0x09, 0x40, slot, 0]) + bytes(block[0:60]),
+            bytes([0x09, 0x40, slot, 1]) + bytes(block[60:120]),
+            bytes([0x09, 0x0C, slot, 2]) + bytes(block[120:128]) + bytes(52)]
+
+
+def x6_button_map(macro_slots: set[int]) -> bytes:
+    """The button map with factory functions, except slots that play a macro."""
+    body = bytearray()
+    for slot, default in enumerate(X6_BUTTON_DEFAULTS, 1):
+        body += bytes([0x12, 0x00, slot]) if slot in macro_slots else default
+    return bytes([0x08, 0x3B, 0x01]) + bytes(body) + _sum16(body)
+
+
+def x6_apply_macros(macros: dict, info: HidInfo | None = None) -> None:
+    """Send {"forward": macro | None, "backward": macro | None} to the X6.
+
+    A button without a macro goes back to its normal function.
+    """
+    info = info or find_x6()
+    if info is None:
+        raise DeviceNotFound(_("Attack Shark X6 nao encontrado. O receptor ou o cabo esta conectado?"))
+    active = {X6_MACRO_SLOTS[b]: m for b, m in (macros or {}).items()
+              if b in X6_MACRO_SLOTS and m and m.get("enabled", True)}
+    packets = [x6_button_map(set(active))]
+    for slot, macro in sorted(active.items()):
+        packets += x6_macro_packets(slot, macro)
+    with HidDevice(info) as dev:
+        for i, pkt in enumerate(packets):
+            if i:
+                time.sleep(0.3)         # the mouse stores macros in flash
+            dev.send_feature(pkt)
 
 
 def find_x6() -> HidInfo | None:
@@ -275,7 +419,7 @@ def x6_apply(profile: dict, stages: list[int], info: HidInfo | None = None) -> N
     """Send one profile's settings to the X6 right now."""
     info = info or find_x6()
     if info is None:
-        raise DeviceNotFound("Attack Shark X6 not found. Is the receiver or cable plugged in?")
+        raise DeviceNotFound(_("Attack Shark X6 nao encontrado. O receptor ou o cabo esta conectado?"))
     packets = x6_packets(profile, stages)
     with HidDevice(info) as dev:
         for i, pkt in enumerate(packets):
@@ -306,10 +450,10 @@ def profile_label(profile: int) -> str:
         if find_x6() is not None:
             profiles = x6_config()["profiles"]
             if 1 <= profile <= len(profiles) and profiles[profile - 1].get("name"):
-                return f"Profile {profile} ({profiles[profile - 1]['name']})"
+                return _("Perfil {n} ({name})", n=profile, name=profiles[profile - 1]['name'])
     except (HidError, ValueError):
         pass
-    return f"Profile {profile}"
+    return _("Perfil {n}", n=profile)
 
 
 def main() -> int:

@@ -185,9 +185,10 @@ class HidDevice:
         try:
             self._fd = os.open(info.path, os.O_RDWR | os.O_NONBLOCK)
         except PermissionError:
-            raise HidError(
-                f"Sem permissao para abrir {info.path}. Rode o install.sh (ele instala "
-                "a regra udev do mouse) e reconecte o receptor.") from None
+            from i18n import _
+            raise HidError(_(
+                "Sem permissao para abrir {path}. Rode o install.sh (ele instala "
+                "a regra udev do mouse) e reconecte o receptor.", path=info.path)) from None
         except OSError as exc:
             raise HidError(f"Nao consegui abrir {info.path}: {exc}") from None
 

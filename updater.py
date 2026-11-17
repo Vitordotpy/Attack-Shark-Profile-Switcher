@@ -21,6 +21,7 @@ import urllib.request
 from typing import NamedTuple
 
 import app_paths
+from i18n import _
 
 API_URL = f"https://api.github.com/repos/{app_paths.GITHUB_REPO}/releases/latest"
 RELEASES_URL = f"https://github.com/{app_paths.GITHUB_REPO}/releases"
@@ -69,10 +70,10 @@ def latest_release(timeout: float = 10) -> Release:
     try:
         data = json.loads(_get(API_URL, timeout))
     except Exception as exc:
-        raise UpdateError(f"Nao consegui consultar o GitHub: {exc}") from None
+        raise UpdateError(_("Nao consegui consultar o GitHub: {exc}", exc=exc)) from None
     tag = data.get("tag_name") or ""
     if not tag:
-        raise UpdateError("Nenhuma versao publicada ainda.")
+        raise UpdateError(_("Nenhuma versao publicada ainda."))
     # GitHub renames uploads ("Instalar Attack Shark.exe" becomes
     # "Instalar.Attack.Shark.exe"), so compare names without separators.
     wanted = _flat(app_paths.INSTALLER_NAME)
@@ -100,10 +101,10 @@ def can_self_update(release: Release) -> bool:
 
 def download_installer(release: Release, progress=lambda done, total: None) -> str:
     if not release.installer_url:
-        raise UpdateError("Esta versao nao tem o instalador anexado.")
+        raise UpdateError(_("Esta versao nao tem o instalador anexado."))
     host = urllib.parse.urlparse(release.installer_url).hostname or ""
     if urllib.parse.urlparse(release.installer_url).scheme != "https" or host not in ALLOWED_HOSTS:
-        raise UpdateError(f"Endereco de download inesperado: {host}")
+        raise UpdateError(_("Endereco de download inesperado: {host}", host=host))
     folder = tempfile.mkdtemp(prefix="attack-shark-update-")
     path = os.path.join(folder, app_paths.INSTALLER_NAME)
     req = urllib.request.Request(release.installer_url, headers={"User-Agent": USER_AGENT})
@@ -111,7 +112,7 @@ def download_installer(release: Release, progress=lambda done, total: None) -> s
         with urllib.request.urlopen(req, timeout=30) as resp, open(path, "wb") as out:
             final_host = urllib.parse.urlparse(resp.geturl()).hostname or ""
             if final_host not in ALLOWED_HOSTS:
-                raise UpdateError(f"Download redirecionado para um endereco inesperado: {final_host}")
+                raise UpdateError(_("Download redirecionado para um endereco inesperado: {host}", host=final_host))
             total = int(resp.headers.get("Content-Length") or release.installer_size or 0)
             done = 0
             while True:
@@ -120,15 +121,15 @@ def download_installer(release: Release, progress=lambda done, total: None) -> s
                     break
                 done += len(chunk)
                 if done > MAX_INSTALLER_BYTES:
-                    raise UpdateError("Download maior que o esperado; cancelado.")
+                    raise UpdateError(_("Download maior que o esperado; cancelado."))
                 out.write(chunk)
                 progress(done, total)
     except UpdateError:
         raise
     except Exception as exc:
-        raise UpdateError(f"Falha ao baixar a atualizacao: {exc}") from None
+        raise UpdateError(_("Falha ao baixar a atualizacao: {exc}", exc=exc)) from None
     if release.installer_size and os.path.getsize(path) != release.installer_size:
-        raise UpdateError("O download veio incompleto. Tente de novo.")
+        raise UpdateError(_("O download veio incompleto. Tente de novo."))
     return path
 
 

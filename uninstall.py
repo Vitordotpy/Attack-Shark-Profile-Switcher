@@ -14,9 +14,10 @@ import tkinter as tk
 from tkinter import messagebox
 
 import app_paths
+import i18n
 import setup_common
+from i18n import _
 
-TITLE = "Desinstalar Attack Shark"
 
 
 def run(quiet: bool = False) -> int:
@@ -24,6 +25,13 @@ def run(quiet: bool = False) -> int:
         print("--uninstall only applies to the installed Attack Shark.exe")
         return 1
 
+    try:
+        import json
+        with open(app_paths.CONFIG_PATH, encoding="utf-8-sig") as handle:
+            i18n.set_language(json.load(handle).get("language", "auto"))
+    except (OSError, ValueError):
+        i18n.set_language("auto")
+    title = _("Desinstalar Attack Shark")
     install_dir = os.path.dirname(os.path.abspath(sys.executable))
     # Only ever delete the folder the installer put us in, never e.g. a build
     # output folder someone ran this from.
@@ -39,14 +47,14 @@ def run(quiet: bool = False) -> int:
         except tk.TclError:
             pass
         if not messagebox.askyesno(
-                TITLE, "Remover o Attack Shark deste computador?\n\n"
-                       "O mouse fica com a configuracao que estiver ativa agora.",
+                title, _("Remover o Attack Shark deste computador?\n\n"
+                         "O mouse fica com a configuracao que estiver ativa agora."),
                 parent=root):
             root.destroy()
             return 1
         remove_settings = messagebox.askyesno(
-            TITLE, "Apagar tambem seus perfis e a lista de jogos?\n\n"
-                   "Escolha Nao para mante-los caso instale de novo.",
+            title, _("Apagar tambem seus perfis e a lista de jogos?\n\n"
+                     "Escolha Nao para mante-los caso instale de novo."),
             parent=root, default="no")
 
     setup_common.stop_running(sys.executable, keep_pid=os.getpid())
@@ -55,7 +63,7 @@ def run(quiet: bool = False) -> int:
         shutil.rmtree(app_paths.DATA_DIR, ignore_errors=True)
 
     if root is not None:
-        messagebox.showinfo(TITLE, "Attack Shark foi removido.", parent=root)
+        messagebox.showinfo(title, _("Attack Shark foi removido."), parent=root)
         root.destroy()
     if delete_folder:
         setup_common.delete_later(install_dir)

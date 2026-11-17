@@ -6,13 +6,16 @@ Troca o perfil do mouse Attack Shark sozinho: quando você abre um jogo, o
 mouse vai para o perfil de jogo (ex.: 1000 Hz, DPI de mira); quando fecha,
 volta para o perfil do dia a dia (ex.: 500 Hz, para economizar bateria).
 Fica um ícone na bandeja do sistema, uma tela de configurações com abas para
-perfis, jogos, logs e atualizações, e o programa se atualiza sozinho.
+perfis (com iluminação), jogos, macros, logs e atualizações, e o programa se
+atualiza sozinho. Disponível em **português, inglês e espanhol**.
 
 > **English:** automatic, game-aware profile switcher for Attack Shark mice.
 > Works with the **V8** (onboard profiles) and the **X6** (profiles stored in
 > `config.json` and sent to the mouse on each switch), on **Windows** (one-file
 > installer, self-updating) and **Linux** (`install.sh`). Includes a settings
-> window to create and edit profiles, manage the games list and watch logs.
+> window to create and edit profiles (with RGB lighting), manage the games list,
+> record macros for the side buttons and watch logs. Portuguese, English and
+> Spanish.
 > Fork of [alexandrewillame/Attack-Shark-Profile-Switcher](https://github.com/alexandrewillame/Attack-Shark-Profile-Switcher).
 
 O programa fala direto com o mouse pelo receptor USB. O software oficial da
@@ -26,8 +29,9 @@ Attack Shark **não precisa ficar aberto**.
 | **Attack Shark X6** | o X6 guarda só uma configuração, então os perfis ficam no `config.json` e são enviados inteiros a cada troca | receptor 2.4G ou cabo USB |
 
 No X6, cada perfil define: DPI, polling rate, tempo de resposta do clique,
-tempo até dormir, ripple control e angle snap. Não é preciso configurar nada
-no software oficial.
+tempo até dormir, ripple control, angle snap e a **iluminação** (efeito, cor,
+brilho e velocidade). Os botões laterais do X6 também podem tocar **macros** de
+teclado. Não é preciso configurar nada no software oficial.
 
 ## Instalação no Windows
 
@@ -103,21 +107,25 @@ jogos nativos, pelo nome do processo.
 
 ## Tela de configurações
 
-Clique no ícone da bandeja (ou botão direito > **Settings**). A tela tem quatro
-abas:
+Clique no ícone da bandeja (ou botão direito > **Configurações**). A tela tem
+cinco abas:
 
 - **Perfis**: criar, duplicar, reordenar e remover perfis, e editar DPI,
-  polling, resposta do clique, tempo até dormir, ripple e angle snap. O botão
-  **Testar no mouse** aplica o perfil na hora, antes de salvar. Também é aqui
-  que se escolhe qual perfil usar **fora de jogos** e **em jogos**, e os 6
-  estágios do botão de DPI.
+  polling, resposta do clique, tempo até dormir, ripple, angle snap e a
+  **iluminação** (efeito, cor, brilho e velocidade). O botão **Testar no
+  mouse** aplica o perfil na hora, antes de salvar. Também é aqui que se
+  escolhe qual perfil usar **fora de jogos** e **em jogos**, e os 6 estágios do
+  botão de DPI.
 - **Jogos**: lista de executáveis que ativam o perfil de jogo. Dá para
   adicionar na mão ou usar **Detectar jogos instalados** (Steam e Epic).
+- **Macros** (X6): escolha o botão lateral (da frente ou de trás), clique em
+  **Gravar** e aperte as teclas; o programa guarda as teclas e o tempo entre
+  elas. Dá para ajustar a espera de cada passo, quantas vezes a macro repete,
+  e **Enviar para o mouse**. As macros ficam gravadas no próprio mouse.
 - **Logs**: atividade do programa ao vivo, colorida (trocas de perfil, jogos
   detectados, avisos e erros).
-
 - **Sobre**: versão instalada, **Verificar agora** e **Atualizar agora**, a
-  opção de verificar atualizações sozinho e links do projeto.
+  opção de verificar atualizações sozinho, o **idioma** e links do projeto.
 
 Ao salvar (botão **Salvar** ou `Ctrl+S`), o programa percebe a mudança e
 aplica em até 2 segundos, sem reiniciar. No canto superior aparece se o mouse
@@ -149,16 +157,18 @@ Dá para desligar a verificação na aba **Sobre**.
 
 ![Menu da bandeja](assets/screenshot1.png?raw=true "Menu da bandeja")
 
-- **Update to X.Y.Z**: aparece só quando há versão nova.
-- **Settings**: abre a tela de configurações.
-- **Auto (game-aware)**: modo normal, troca sozinho conforme o jogo.
-- **Pin to Profile N**: trava num perfil e pausa a troca automática.
-- **Show popups**: liga ou desliga o aviso na tela nesta sessão.
-- **Start at boot**: iniciar junto com o Windows.
-- **Detect games**: procura jogos instalados e adiciona os novos.
-- **Edit games list**: abre o `config.json`.
-- **Open log**: abre a pasta do log.
-- **Quit**: fecha o programa e volta o mouse para o perfil do dia a dia.
+- **Atualizar para X.Y.Z**: aparece só quando há versão nova.
+- **Configurações**: abre a tela de configurações.
+- **Automático (conforme o jogo)**: modo normal, troca sozinho conforme o jogo.
+- **Fixar no Perfil N**: trava num perfil e pausa a troca automática.
+- **Mostrar avisos**: liga ou desliga o aviso na tela nesta sessão.
+- **Iniciar com o sistema**: iniciar junto com o Windows / Linux.
+- **Detectar jogos**: procura jogos instalados e adiciona os novos.
+- **Editar lista de jogos**: abre o `config.json`.
+- **Abrir log**: abre a pasta do log.
+- **Sair**: fecha o programa e volta o mouse para o perfil do dia a dia.
+
+O menu acompanha o idioma escolhido (português, inglês ou espanhol).
 
 ## Aviso na tela
 
@@ -180,14 +190,25 @@ arquivo em UTF-8.
   "popup_enabled": true,
   "popup_duration_ms": 10000,
   "games": ["cs2.exe"],
+  "language": "auto",
+  "check_updates": true,
   "x6": {
     "dpi_stages": [800, 1200, 1600, 3200, 5600, 400],
     "profiles": [
       { "name": "Normal", "dpi": 800,  "polling": 500,  "key_response_ms": 8,
         "deep_sleep_min": 10, "ripple": true,  "angle_snap": false },
       { "name": "Jogo",   "dpi": 1600, "polling": 1000, "key_response_ms": 4,
-        "deep_sleep_min": 15, "ripple": false, "angle_snap": false }
+        "deep_sleep_min": 15, "ripple": false, "angle_snap": false,
+        "led": { "mode": "static", "color": "#ff2200", "brightness": 8, "speed": 3 } }
     ]
+  },
+  "macros": {
+    "forward": { "enabled": true, "loops": 1, "events": [
+      { "key": "LCTRL", "action": "press",   "delay": 10 },
+      { "key": "C",     "action": "press",   "delay": 10 },
+      { "key": "C",     "action": "release", "delay": 10 },
+      { "key": "LCTRL", "action": "release", "delay": 10 } ] },
+    "backward": null
   }
 }
 ```
@@ -204,6 +225,14 @@ arquivo em UTF-8.
 | `x6.profiles[].key_response_ms` | tempo de resposta do clique: número par de 2 a 20 |
 | `x6.profiles[].deep_sleep_min` | minutos sem uso até o mouse dormir: 1 a 15 |
 | `x6.profiles[].ripple` / `angle_snap` | `true` ou `false` |
+| `x6.profiles[].led.mode` | `off`, `static`, `breathing`, `neon`, `color_breathing`, `static_dpi` ou `breathing_dpi` |
+| `x6.profiles[].led.color` | cor `#RRGGBB` (vale nos efeitos `static` e `breathing`) |
+| `x6.profiles[].led.brightness` / `speed` | brilho de 1 a 8; velocidade de 1 (lenta) a 5 (rápida) |
+| `macros.forward` / `macros.backward` | macro do botão lateral da frente / de trás, ou `null` para a função normal |
+| `macros.*.loops` | quantas vezes a macro toca a cada clique (1 a 255) |
+| `macros.*.events` | até 50 passos: tecla (`A`-`Z`, `0`-`9`, `F1`-`F12`, `ENTER`, `SPACE`, `LCTRL`, `LSHIFT`...), `press`/`release` e a espera depois, em ms (10 a 1270) |
+| `language` | `auto` (idioma do sistema), `pt`, `en` ou `es` |
+| `check_updates` | verificar atualizações sozinho (`true`/`false`) |
 
 No V8, o conteúdo de cada perfil continua sendo configurado no Attack Shark
 Mouse Hub; a seção `x6` é ignorada.
@@ -264,9 +293,15 @@ Quem tem a versão anterior recebe o aviso em até um dia, ou na hora pelo
 - **X6, valores não capturados:** 250 Hz e resposta de 2 a 4 ms seguem a mesma
   regra dos valores capturados, mas não foram vistos sendo enviados pelo app
   oficial. Se notar comportamento estranho, use 500/1000 Hz e 6/8 ms.
-- **X6:** enviar resposta do clique ou deep sleep coloca a luz no efeito
-  "breathing", porque os três vão no mesmo comando. O motion sync não é
-  alterado.
+- **X6, iluminação:** vai no mesmo comando `0x05` da resposta do clique e do
+  deep sleep (byte 3 = efeito, 4 = velocidade, 5 = brilho, 6-8 = cor). Perfis
+  sem `led` usam o efeito de fábrica (cor do DPI, respirando). O motion sync não
+  é alterado.
+- **X6, macros:** `0x08` é o mapa dos botões (o lateral da frente é a posição
+  7 e o de trás a 8; `12 00 <posição>` faz o botão tocar a macro) e `0x09`
+  leva a macro em três partes. Cada passo tem a ação (apertar/soltar), a espera
+  em unidades de 10 ms e o código de tecla USB. Enviar as macros devolve os
+  outros botões à função de fábrica.
 
 ## Problemas, ideias e pedidos
 

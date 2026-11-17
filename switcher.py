@@ -31,8 +31,10 @@ import app_paths
 if app_paths.IS_WINDOWS:
     import winreg
 import detect_games
+import i18n
 import overlay as overlay_module
 import sharkctl
+from i18n import _
 from sharkctl import HidError
 
 HERE = app_paths.CODE_DIR
@@ -384,6 +386,7 @@ class Switcher:
             log.warning("config.json changed but could not be read: %s", exc)
             return
         log.info("config.json changed - reloading")
+        i18n.set_language(config.get("language", "auto"))
         self.config = config
         self.games = {name.lower() for name in config["games"]}
         if self.override is not None and self.override > sharkctl.profile_count():
@@ -413,7 +416,7 @@ class Switcher:
                 # after a successful _apply keeps a failed write silent rather
                 # than claiming a switch that never happened.
                 if transition and self.override is None:
-                    self._on_game_switch(want, self.active_game or "Desktop")
+                    self._on_game_switch(want, self.active_game or _("Desktop"))
 
     def run(self) -> None:
         log.info("watching %d game executable(s), poll every %ss",
@@ -459,10 +462,10 @@ def run_tray(switcher: Switcher, popup: overlay_module.Overlay) -> None:
     import pystray
 
     def title() -> str:
-        state = (f"pinned to Profile {switcher.override}" if switcher.override
-                 else (f"in game: {switcher.active_game}" if switcher.active_game
-                       else "desktop"))
-        return f"Attack Shark - Profile {switcher.applied or '?'} ({state})"
+        state = (_("fixo no Perfil {n}", n=switcher.override) if switcher.override
+                 else (_("no jogo: {game}", game=switcher.active_game) if switcher.active_game
+                       else _("area de trabalho")))
+        return _("Attack Shark - Perfil {n} ({state})", n=switcher.applied or "?", state=state)
 
     logo_path = app_paths.asset("logo.png")
     icon_image = Image.open(logo_path)
@@ -502,8 +505,8 @@ def run_tray(switcher: Switcher, popup: overlay_module.Overlay) -> None:
         return is_boot_enabled() if pending is None else pending
 
     def boot_label(_item) -> str:
-        return ("Start at boot  (applying...)" if boot_pending[0] is not None
-                else "Start at boot")
+        return (_("Iniciar com o sistema  (aplicando...)") if boot_pending[0] is not None
+                else _("Iniciar com o sistema"))
 
     def toggle_boot(_icon, _item) -> None:
         boot_pending[0] = not boot_state()
@@ -521,8 +524,7 @@ def run_tray(switcher: Switcher, popup: overlay_module.Overlay) -> None:
                 else:
                     log.warning("could not %s start at boot: %s", verb, detail)
                     try:
-                        icon.notify(f"Could not {verb} start at boot.",
-                                    "Attack Shark profile switcher")
+                        icon.notify(_("Nao consegui alterar a inicializacao."), "Attack Shark")
                     except Exception:
                         pass
                 # Leave it set if a newer click superseded this one - that
@@ -553,9 +555,9 @@ def run_tray(switcher: Switcher, popup: overlay_module.Overlay) -> None:
             switcher.games = {n.lower() for n in switcher.config["games"]}
             try:
                 icon.notify(
-                    f"Added {len(added)} new game(s) to config.json." if added
-                    else "No new games found.",
-                    "Attack Shark profile switcher")
+                    _("{count} jogo(s) novo(s) adicionado(s).", count=len(added)) if added
+                    else _("Nenhum jogo novo encontrado."),
+                    "Attack Shark")
             except Exception:
                 pass  # balloon notifications aren't guaranteed everywhere
         threading.Thread(target=worker, name="detect-games", daemon=True).start()
@@ -606,8 +608,8 @@ def run_tray(switcher: Switcher, popup: overlay_module.Overlay) -> None:
         refresh()
         if announce and first_time:
             try:
-                icon.notify(f"Versao {release.version} disponivel. Clique com o botao direito "
-                            "no icone > Update.", "Attack Shark")
+                icon.notify(_("Versao {version} disponivel. Clique com o botao direito no icone > Atualizar.",
+                              version=release.version), "Attack Shark")
             except Exception:
                 pass
 
@@ -635,7 +637,7 @@ def run_tray(switcher: Switcher, popup: overlay_module.Overlay) -> None:
         def worker() -> None:
             try:
                 try:
-                    icon.notify(f"Baixando a versao {release.version}...", "Attack Shark")
+                    icon.notify(_("Baixando a versao {version}...", version=release.version), "Attack Shark")
                 except Exception:
                     pass
                 path = updater.download_installer(release)
@@ -644,7 +646,7 @@ def run_tray(switcher: Switcher, popup: overlay_module.Overlay) -> None:
             except updater.UpdateError as exc:
                 log.warning("update failed: %s", exc)
                 try:
-                    icon.notify(f"A atualizacao falhou: {exc}", "Attack Shark")
+                    icon.notify(_("A atualizacao falhou: {exc}", exc=exc), "Attack Shark")
                 except Exception:
                     pass
                 updating[0] = False
@@ -655,8 +657,8 @@ def run_tray(switcher: Switcher, popup: overlay_module.Overlay) -> None:
         release = update[0]
         if release is None:
             return "Update"
-        return (f"Updating to {release.version}..." if updating[0]
-                else f"⬆  Update to {release.version}")
+        return (_("Atualizando para {version}...", version=release.version) if updating[0]
+                else _("⬆  Atualizar para {version}", version=release.version))
 
     def build_menu() -> pystray.Menu:
         return pystray.Menu(
@@ -665,24 +667,24 @@ def run_tray(switcher: Switcher, popup: overlay_module.Overlay) -> None:
                              visible=lambda _item: update[0] is not None,
                              enabled=lambda _item: not updating[0]),
             pystray.Menu.SEPARATOR,
-            pystray.MenuItem("Auto (game-aware)", choose(None),
+            pystray.MenuItem(_("Automatico (conforme o jogo)"), choose(None),
                              checked=is_selected(None), radio=True),
-            *[pystray.MenuItem(f"Pin to {sharkctl.profile_label(n)}", choose(n),
+            *[pystray.MenuItem(_("Fixar no {label}", label=sharkctl.profile_label(n)), choose(n),
                                checked=is_selected(n), radio=True)
               for n in range(1, sharkctl.profile_count() + 1)],
             pystray.Menu.SEPARATOR,
-            pystray.MenuItem("Show popups", toggle_popups,
+            pystray.MenuItem(_("Mostrar avisos"), toggle_popups,
                              checked=lambda _item: popup.enabled),
             pystray.MenuItem(boot_label, toggle_boot,
                              checked=lambda _item: boot_state()),
-            pystray.MenuItem("Settings (profiles, games, logs)", edit_profiles, default=True),
-            pystray.MenuItem("Detect games", detect_games_now),
-            pystray.MenuItem("Edit games list",
+            pystray.MenuItem(_("Configuracoes (perfis, jogos, logs)"), edit_profiles, default=True),
+            pystray.MenuItem(_("Detectar jogos"), detect_games_now),
+            pystray.MenuItem(_("Editar lista de jogos"),
                              lambda _i, _it: app_paths.open_path(CONFIG_PATH)),
-            pystray.MenuItem("Open log",
+            pystray.MenuItem(_("Abrir log"),
                              lambda _i, _it: open_log()),
             pystray.Menu.SEPARATOR,
-            pystray.MenuItem("Quit", quit_app),
+            pystray.MenuItem(_("Sair"), quit_app),
         )
 
     icon.menu = build_menu()
@@ -747,6 +749,7 @@ def main() -> int:
              "on" if boot_enabled else "off (%s)" % boot_reason)
 
     config = load_config()
+    i18n.set_language(config.get("language", "auto"))
     switcher = Switcher(config, dry_run=args.dry_run)
     atexit.register(switcher.revert)
 

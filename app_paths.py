@@ -16,7 +16,7 @@ import sys
 
 APP_NAME = "Attack Shark"
 APP_FULL_NAME = "Attack Shark Profile Switcher"
-APP_VERSION = "2.1.0"
+APP_VERSION = "2.2.0"
 PUBLISHER = "Vitordotpy"
 GITHUB_REPO = "Vitordotpy/Attack-Shark-Profile-Switcher"
 EXE_NAME = "Attack Shark.exe"
