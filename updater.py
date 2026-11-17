@@ -135,8 +135,12 @@ def download_installer(release: Release, progress=lambda done, total: None) -> s
 
 def run_installer(path: str) -> None:
     """Start the downloaded installer; it will close this app and restart it."""
-    subprocess.Popen([path, "--silent", "--update"], close_fds=True,
-                     creationflags=app_paths.CREATE_NO_WINDOW)
+    # Started from its own folder (not ours, which it is about to replace) and
+    # without this frozen app's internal TCL/TK/bootloader variables.
+    env = {k: v for k, v in os.environ.items()
+           if not k.startswith(("_PYI", "_MEI")) and k not in ("TCL_LIBRARY", "TK_LIBRARY")}
+    subprocess.Popen([path, "--silent", "--update"], close_fds=True, env=env,
+                     cwd=os.path.dirname(path), creationflags=app_paths.CREATE_NO_WINDOW)
 
 
 def open_release_page(release: Release | None = None) -> None:

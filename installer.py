@@ -24,6 +24,7 @@ import shutil
 import subprocess
 import sys
 import threading
+import time
 import tkinter as tk
 import zipfile
 from tkinter import filedialog, messagebox, ttk
@@ -74,11 +75,15 @@ def install(target: str, desktop: bool, start_menu: bool, startup: bool,
 
     report(8, _("Preparando a pasta..."))
     if os.path.isdir(target) and os.listdir(target):
-        if not os.path.exists(exe):
+        registered = setup_common.installed_dir()
+        ours = (os.path.exists(exe) or os.path.isdir(os.path.join(target, "_internal"))
+                or (registered and os.path.normcase(os.path.abspath(registered))
+                    == os.path.normcase(os.path.abspath(target))))
+        if not ours:
             raise InstallError(_("A pasta escolhida ja tem outros arquivos:\n{target}\n\n"
                                  "Escolha uma pasta vazia.", target=target))
         try:
-            shutil.rmtree(target)       # previous version; settings live elsewhere
+            clear_folder(target)        # previous version; settings live elsewhere
         except OSError as exc:
             raise InstallError(_("Nao consegui substituir a versao anterior:\n{exc}", exc=exc))
     os.makedirs(target, exist_ok=True)
@@ -160,8 +165,44 @@ def initial_language() -> str:
         return "auto"
 
 
+def clear_folder(folder: str, attempts: int = 10) -> None:
+    """Empty `folder` but keep the folder itself.
+
+    Removing the folder would fail whenever some process has it as its
+    current directory - which is exactly the case when the old app starts
+    this installer to update itself. Files of a just-closed app can stay
+    locked for a moment, so each pass retries what is left.
+    """
+    for attempt in range(attempts):
+        leftovers = []
+        for name in os.listdir(folder):
+            path = os.path.join(folder, name)
+            try:
+                if os.path.isdir(path) and not os.path.islink(path):
+                    shutil.rmtree(path)
+                else:
+                    os.remove(path)
+            except OSError as exc:
+                leftovers.append(exc)
+        if not leftovers:
+            return
+        if attempt == attempts - 1:
+            raise leftovers[0]
+        time.sleep(0.5)
+
+
+def clean_env() -> dict:
+    """This process's environment minus PyInstaller's internal variables.
+
+    A frozen program hands its own TCL/TK and bootloader paths to children;
+    another frozen program must not inherit them.
+    """
+    return {k: v for k, v in os.environ.items()
+            if not k.startswith(("_PYI", "_MEI")) and k not in ("TCL_LIBRARY", "TK_LIBRARY")}
+
+
 def launch(exe: str, *args: str) -> None:
-    subprocess.Popen([exe, *args], cwd=os.path.dirname(exe), close_fds=True)
+    subprocess.Popen([exe, *args], cwd=os.path.dirname(exe), close_fds=True, env=clean_env())
 
 
 # -- UI -------------------------------------------------------------------------
@@ -459,6 +500,12 @@ def main() -> int:
     parser.add_argument("--update", action="store_true",
                         help="with --silent: keep the current shortcuts / startup choices")
     args = parser.parse_args()
+    # Never sit inside the folder being replaced: an old version starting this
+    # installer to update itself hands over its own folder as the working dir.
+    try:
+        os.chdir(os.path.dirname(os.path.abspath(sys.executable)))
+    except OSError:
+        os.chdir(os.path.expanduser("~"))
 
     if args.silent:
         target = args.dir or setup_common.installed_dir() or setup_common.default_install_dir()
