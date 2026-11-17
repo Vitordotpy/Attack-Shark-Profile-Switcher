@@ -7,15 +7,15 @@ mouse vai para o perfil de jogo (ex.: 1000 Hz, DPI de mira); quando fecha,
 volta para o perfil do dia a dia (ex.: 500 Hz, para economizar bateria).
 Fica um ícone na bandeja do sistema, uma tela de configurações com abas para
 perfis (com iluminação), jogos, macros, logs e atualizações, e o programa se
-atualiza sozinho. Disponível em **português, inglês e espanhol**.
+atualiza sozinho. Disponível em **português, inglês, espanhol, chinês, japonês e russo**.
 
 > **English:** automatic, game-aware profile switcher for Attack Shark mice.
 > Works with the **V8** (onboard profiles) and the **X6** (profiles stored in
 > `config.json` and sent to the mouse on each switch), on **Windows** (one-file
 > installer, self-updating) and **Linux** (`install.sh`). Includes a settings
 > window to create and edit profiles (with RGB lighting), manage the games list,
-> record macros for the side buttons and watch logs. Portuguese, English and
-> Spanish.
+> record macros for the side buttons and watch logs. Portuguese, English,
+> Spanish, Chinese, Japanese and Russian.
 > Fork of [alexandrewillame/Attack-Shark-Profile-Switcher](https://github.com/alexandrewillame/Attack-Shark-Profile-Switcher).
 
 O programa fala direto com o mouse pelo receptor USB. O software oficial da
@@ -168,7 +168,7 @@ Dá para desligar a verificação na aba **Sobre**.
 - **Abrir log**: abre a pasta do log.
 - **Sair**: fecha o programa e volta o mouse para o perfil do dia a dia.
 
-O menu acompanha o idioma escolhido (português, inglês ou espanhol).
+O menu acompanha o idioma escolhido.
 
 ## Aviso na tela
 
@@ -231,7 +231,7 @@ arquivo em UTF-8.
 | `macros.forward` / `macros.backward` | macro do botão lateral da frente / de trás, ou `null` para a função normal |
 | `macros.*.loops` | quantas vezes a macro toca a cada clique (1 a 255) |
 | `macros.*.events` | até 50 passos: tecla (`A`-`Z`, `0`-`9`, `F1`-`F12`, `ENTER`, `SPACE`, `LCTRL`, `LSHIFT`...), `press`/`release` e a espera depois, em ms (10 a 1270) |
-| `language` | `auto` (idioma do sistema), `pt`, `en` ou `es` |
+| `language` | `auto` (idioma do sistema), `pt`, `en`, `es`, `zh`, `ja` ou `ru` |
 | `check_updates` | verificar atualizações sozinho (`true`/`false`) |
 
 No V8, o conteúdo de cada perfil continua sendo configurado no Attack Shark

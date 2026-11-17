@@ -1,15 +1,17 @@
-"""Translations: Portuguese, English and Spanish.
+"""Translations: Portuguese, English, Spanish, Chinese, Japanese and Russian.
 
 Code calls _("source text", name=value). The source text is the original
 Portuguese string (kept without accents, as it always was in the code); the
 catalog maps it to each language. A string missing from the catalog is shown
 as written, so nothing ever breaks - it just stays in Portuguese.
 
-The language comes from config.json ("language": "auto" | "pt" | "en" | "es");
+The language comes from config.json ("language": "auto" | "pt" | "en" | "es" | "zh" | "ja" | "ru");
 "auto" follows the system's language and falls back to English.
 
-To add a language: add its code to LANGUAGES and one more item to each
-catalog entry (entries with fewer items fall back to English).
+Portuguese, English and Spanish live in CATALOG below; Chinese, Japanese and
+Russian in i18n_extra.py (one dict per language, same keys). To add a
+language: add its code to LANGUAGES and a dict to i18n_extra.EXTRA; missing
+strings fall back to English.
 """
 
 from __future__ import annotations
@@ -18,7 +20,8 @@ import locale
 import os
 import sys
 
-LANGUAGES = {"pt": "Português", "en": "English", "es": "Español"}
+LANGUAGES = {"pt": "Português", "en": "English", "es": "Español",
+             "zh": "中文 (简体)", "ja": "日本語", "ru": "Русский"}
 _ORDER = list(LANGUAGES)            # position of each language in the tuples
 _lang = "pt"
 
@@ -29,7 +32,8 @@ def system_language() -> str:
         try:
             import ctypes
             lcid = ctypes.windll.kernel32.GetUserDefaultUILanguage()
-            code = {0x16: "pt", 0x0A: "es", 0x09: "en"}.get(lcid & 0x3FF, "")
+            code = {0x16: "pt", 0x0A: "es", 0x09: "en", 0x04: "zh", 0x11: "ja",
+                    0x19: "ru"}.get(lcid & 0x3FF, "")
         except Exception:
             code = ""
     if not code:
@@ -57,13 +61,21 @@ def current() -> str:
 
 def _(text: str, **kw) -> str:
     entry = CATALOG.get(text)
-    if entry:
+    extra = _EXTRA.get(_lang)
+    if extra is not None:
+        out = extra.get(text) or (entry[1] if entry else text)
+    elif entry:
         i = _ORDER.index(_lang)
         out = entry[i] if i < len(entry) and entry[i] else entry[1]
     else:
         out = text
     return out.format(**kw) if kw else out
 
+
+try:
+    from i18n_extra import EXTRA as _EXTRA      # zh, ja, ru
+except ImportError:
+    _EXTRA = {}
 
 # source (pt, as in the code): (pt, en, es)
 CATALOG: dict[str, tuple[str, ...]] = {

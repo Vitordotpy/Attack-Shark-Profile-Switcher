@@ -72,7 +72,7 @@ NOVO_PERFIL = {"name": "Novo perfil", "dpi": 1600, "polling": 1000, "key_respons
 
 from ui_theme import (ACCENT, ACCENT_HI, AMBER, BG, CARD, CARD2, FG, FONT, GREEN,  # noqa: E402
                       INPUT, MONO, MUTED, RED, card, dark_title_bar, set_window_icon,
-                      setup_style, styled_listbox)
+                      setup_style, styled_listbox, ScrollFrame)
 
 
 class App:
@@ -99,7 +99,7 @@ class App:
         root.title(_title())
         height = min(850, root.winfo_screenheight() - 80)
         root.geometry(f"940x{height}")
-        root.minsize(880, min(800, height))
+        root.minsize(820, 480)
         set_window_icon(root, app_paths.asset("logo.ico"), app_paths.asset("logo.png"))
         root.protocol("WM_DELETE_WINDOW", self.close)
 
@@ -162,11 +162,12 @@ class App:
         self.nb.add(self.tab_macros, text=_("Macros"))
         self.nb.add(self.tab_logs, text=_("Logs"))
         self.nb.add(self.tab_about, text=_("Sobre"))
-        self._build_profiles(self.tab_profiles)
-        self._build_games(self.tab_games)
-        self._build_macros(self.tab_macros)
-        self._build_logs(self.tab_logs)
-        self._build_about(self.tab_about)
+        # Each tab scrolls when the window is too short for it.
+        self._build_profiles(self._scrolled(self.tab_profiles))
+        self._build_games(self._scrolled(self.tab_games))
+        self._build_macros(self._scrolled(self.tab_macros))
+        self._build_logs(self._scrolled(self.tab_logs))
+        self._build_about(self._scrolled(self.tab_about))
 
         # footer
         foot = ttk.Frame(root, padding=(22, 12, 22, 16))
@@ -177,6 +178,14 @@ class App:
         ttk.Button(foot, text=_("Fechar"), command=self.close).grid(row=0, column=1, padx=(0, 8))
         ttk.Button(foot, text=_("Salvar"), style="Accent.TButton", command=self.save).grid(row=0, column=2)
         root.bind("<Control-s>", lambda _e: None if self.recording else self.save())
+
+    @staticmethod
+    def _scrolled(tab: ttk.Frame) -> ttk.Frame:
+        tab.columnconfigure(0, weight=1)
+        tab.rowconfigure(0, weight=1)
+        frame = ScrollFrame(tab)
+        frame.grid(row=0, column=0, sticky="nsew")
+        return frame.inner
 
     # -- profiles tab -----------------------------------------------------
 

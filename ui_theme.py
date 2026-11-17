@@ -128,6 +128,60 @@ def set_window_icon(root: tk.Misc, ico_path: str, png_path: str) -> None:
         pass
 
 
+class ScrollFrame(ttk.Frame):
+    """A frame whose content scrolls vertically when the window is too short.
+
+    Put widgets in `.inner`. While everything fits, the content is stretched
+    to the full height (so row/column weights still work) and no scrollbar is
+    shown; once it does not fit, a scrollbar appears and the mouse wheel
+    scrolls - except over widgets that scroll by themselves (lists, text).
+    """
+
+    SELF_SCROLLING = ("Listbox", "Text", "Treeview")
+
+    def __init__(self, parent, style: str = "Card.TFrame", bg: str = CARD, **kw):
+        super().__init__(parent, style=style, **kw)
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(0, weight=1)
+        self.canvas = tk.Canvas(self, bg=bg, highlightthickness=0, borderwidth=0)
+        self.canvas.grid(row=0, column=0, sticky="nsew")
+        self.bar = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
+        self.canvas.configure(yscrollcommand=self.bar.set)
+        self.inner = ttk.Frame(self.canvas, style=style)
+        self._win = self.canvas.create_window(0, 0, window=self.inner, anchor="nw")
+        self.inner.bind("<Configure>", lambda _e: self._resize())
+        self.canvas.bind("<Configure>", lambda _e: self._resize())
+        # One global handler per frame; each only reacts to widgets inside it.
+        self.canvas.bind_all("<MouseWheel>", self._wheel, add="+")
+        for seq, step in (("<Button-4>", -1), ("<Button-5>", 1)):      # Linux wheel
+            self.canvas.bind_all(seq, lambda e, s=step: self._scroll(e, s), add="+")
+
+    def _overflow(self) -> bool:
+        return self.inner.winfo_reqheight() > self.canvas.winfo_height() + 1
+
+    def _resize(self) -> None:
+        width, height = self.canvas.winfo_width(), self.canvas.winfo_height()
+        need = self.inner.winfo_reqheight()
+        self.canvas.itemconfigure(self._win, width=width, height=max(height, need))
+        self.canvas.configure(scrollregion=(0, 0, width, max(height, need)))
+        if need > height + 1:
+            self.bar.grid(row=0, column=1, sticky="ns")
+        else:
+            self.bar.grid_remove()
+            self.canvas.yview_moveto(0)
+
+    def _scroll(self, event, step: int) -> None:
+        widget = event.widget
+        if not self._overflow() or not str(widget).startswith(str(self)):
+            return
+        if widget.winfo_class() in self.SELF_SCROLLING:
+            return
+        self.canvas.yview_scroll(step * 3, "units")
+
+    def _wheel(self, event) -> None:
+        self._scroll(event, -1 if event.delta > 0 else 1)
+
+
 def card(parent, **grid) -> ttk.Frame:
     frame = ttk.Frame(parent, style="Card.TFrame", padding=16)
     frame.grid(**grid)

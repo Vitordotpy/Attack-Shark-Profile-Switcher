@@ -99,6 +99,7 @@ def main() -> int:
         "--hidden-import", "profiles_editor",
         "--hidden-import", "uninstall",
         "--hidden-import", "updater",
+        "--hidden-import", "i18n_extra",
         "--exclude-module", "linhid",
         "--exclude-module", "linux_desktop",
     )
