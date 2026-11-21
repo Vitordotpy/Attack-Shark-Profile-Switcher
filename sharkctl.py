@@ -398,6 +398,47 @@ def x6_apply_macros(macros: dict, info: HidInfo | None = None) -> None:
             dev.send_feature(pkt)
 
 
+# -- X6 battery -----------------------------------------------------------------
+#
+# The X6 reports its battery by itself, about once a second, as input report
+# 0x03 on the usage-page 0x000A collection (5 bytes):
+#   03 10 40 <state> <level>     state 01 = on battery, 03 = charging (cable)
+#                                level 0-10, in steps of 10 %
+# Matched against the vendor app (cable: "Charging", wireless: "100%" with
+# level 0x0A). The level scale is inferred from that single reading, so the
+# raw report is kept for the log until more levels have been seen.
+
+def find_x6_battery_channel() -> HidInfo | None:
+    for pid in X6_PIDS:
+        for info in enumerate_hid(X6_VID, pid):
+            if info.usage_page == 0x000A and info.input_len >= 5:
+                return info
+    return None
+
+
+def x6_read_battery(timeout_ms: int = 3000) -> dict | None:
+    """{"level": 0-100, "charging": bool, "wired": bool, "raw": "03 10 ..."} or None."""
+    info = find_x6_battery_channel()
+    if info is None:
+        return None
+    deadline = time.monotonic() + timeout_ms / 1000
+    try:
+        with HidDevice(info, overlapped=True) as dev:
+            while time.monotonic() < deadline:
+                try:
+                    report = dev.read_input(timeout_ms=500)
+                except HidError:
+                    continue
+                if len(report) >= 5 and report[0] == 0x03:
+                    return {"level": max(0, min(100, report[4] * 10)),
+                            "charging": report[3] == 0x03,
+                            "wired": info.product_id == 0xFA61,
+                            "raw": report[:5].hex(" ")}
+    except HidError:
+        return None
+    return None
+
+
 def find_x6() -> HidInfo | None:
     """The X6 collection that takes the config feature reports (col04)."""
     for pid in X6_PIDS:

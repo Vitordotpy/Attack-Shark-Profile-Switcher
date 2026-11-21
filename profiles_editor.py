@@ -804,6 +804,16 @@ class App:
                 ok = sharkctl.find_device() is not None
             except Exception:
                 ok = False
+            # the battery report arrives about once a second: read it every 30 s
+            now = time.monotonic()
+            if ok and now - getattr(self, "_battery_at", -999) > 30:
+                self._battery_at = now
+                try:
+                    self._battery = sharkctl.x6_read_battery()
+                except Exception:
+                    self._battery = None
+            elif not ok:
+                self._battery = None
             self._ui.put(lambda: self._set_pill(ok))
         threading.Thread(target=worker, daemon=True).start()
         self.root.after(3000, self._check_device)
@@ -820,7 +830,13 @@ class App:
 
     def _set_pill(self, ok: bool) -> None:
         if ok:
-            self.pill.config(text=_("●  Mouse conectado"), bg="#143326", fg=GREEN)
+            text = _("●  Mouse conectado")
+            b = getattr(self, "_battery", None)
+            if b:
+                text += "   \u00b7   " + ("\u26a1 " + _("Carregando") if b["charging"]
+                                        else _("Bateria {pct}%", pct=b["level"]))
+            low = bool(b) and not b["charging"] and b["level"] <= 20
+            self.pill.config(text=text, bg="#3a2f14" if low else "#143326", fg=AMBER if low else GREEN)
         else:
             self.pill.config(text=_("●  Mouse nao encontrado"), bg="#3a1f26", fg=RED)
 

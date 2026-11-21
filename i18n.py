@@ -191,6 +191,12 @@ CATALOG: dict[str, tuple[str, ...]] = {
         "Salvo, mas as macros não chegaram ao mouse. Use 'Enviar macros para o mouse' com ele conectado.",
         "Saved, but the macros did not reach the mouse. Use 'Send macros to the mouse' with it connected.",
         "Guardado, pero las macros no llegaron al ratón. Usa 'Enviar macros al ratón' con él conectado."),
+    "Bateria {pct}%": ("Bateria {pct}%", "Battery {pct}%", "Batería {pct}%"),
+    "Carregando": ("Carregando", "Charging", "Cargando"),
+    "Bateria baixa: {pct}%. Hora de carregar o mouse.": (
+        "Bateria baixa: {pct}%. Hora de carregar o mouse.",
+        "Low battery: {pct}%. Time to charge the mouse.",
+        "Batería baja: {pct}%. Es hora de cargar el ratón."),
     "Quando usar": ("Quando usar", "When to use", "Cuándo usar"),
     "Fora de jogos": ("Fora de jogos", "Outside games", "Fuera de juegos"),
     "Em jogos": ("Em jogos", "In games", "En juegos"),

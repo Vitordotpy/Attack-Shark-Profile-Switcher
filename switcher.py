@@ -458,14 +458,65 @@ def open_log() -> None:
         app_paths.open_path(LOG_DIR)
 
 
+BATTERY_LOW = 20                    # % at which to warn, once per discharge
+BATTERY_INTERVAL_S = 60
+
+
+def battery_text(b: dict) -> str:
+    return "\u26a1 " + _("Carregando") if b["charging"] else _("Bateria {pct}%", pct=b["level"])
+
+
+def battery_loop(battery: list, refresh, icon) -> None:
+    """Read the X6 battery every minute; warn once when it runs low."""
+    stop = threading.Event()
+    warned = False
+    last_raw = None
+    delay = 5
+    while not stop.wait(delay):
+        delay = BATTERY_INTERVAL_S
+        try:
+            b = sharkctl.x6_read_battery()
+        except Exception:
+            log.exception("battery read failed")
+            b = None
+        if b is None:
+            if battery[0] is not None:
+                battery[0] = None
+                refresh()
+            delay = 15
+            continue
+        if b["raw"] != last_raw:
+            last_raw = b["raw"]
+            log.info("battery: %s%%%s (raw %s)", b["level"], " charging" if b["charging"] else "",
+                     b["raw"])
+        changed = (battery[0] or {}).get("raw") != b["raw"]
+        battery[0] = b
+        if b["charging"]:
+            warned = False
+        elif b["level"] <= BATTERY_LOW and not warned:
+            warned = True
+            try:
+                icon.notify(_("Bateria baixa: {pct}%. Hora de carregar o mouse.", pct=b["level"]),
+                            "Attack Shark")
+            except Exception:
+                pass
+        if changed:
+            refresh()
+
+
 def run_tray(switcher: Switcher, popup: overlay_module.Overlay) -> None:
     import pystray
+
+    battery: list = [None]              # last sharkctl.x6_read_battery() result
 
     def title() -> str:
         state = (_("fixo no Perfil {n}", n=switcher.override) if switcher.override
                  else (_("no jogo: {game}", game=switcher.active_game) if switcher.active_game
                        else _("area de trabalho")))
-        return _("Attack Shark - Perfil {n} ({state})", n=switcher.applied or "?", state=state)
+        text = _("Attack Shark - Perfil {n} ({state})", n=switcher.applied or "?", state=state)
+        if battery[0]:
+            text += "  \u00b7  " + battery_text(battery[0])
+        return text
 
     logo_path = app_paths.asset("logo.png")
     icon_image = Image.open(logo_path)
@@ -691,6 +742,8 @@ def run_tray(switcher: Switcher, popup: overlay_module.Overlay) -> None:
 
     threading.Thread(target=switcher.run, daemon=True).start()
     threading.Thread(target=update_loop, name="update-check", daemon=True).start()
+    threading.Thread(target=battery_loop, args=(battery, refresh, icon), name="battery",
+                     daemon=True).start()
     icon.run()
 
 

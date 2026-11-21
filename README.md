@@ -31,7 +31,7 @@ Attack Shark **não precisa ficar aberto**.
 No X6, cada perfil define: DPI, polling rate, tempo de resposta do clique,
 tempo até dormir, ripple control, angle snap e a **iluminação** (efeito, cor,
 brilho e velocidade). Os botões laterais do X6 também podem tocar **macros** de
-teclado. Não é preciso configurar nada no software oficial.
+teclado, e o programa mostra a **bateria** do X6. Não é preciso configurar nada no software oficial.
 
 ## Instalação no Windows
 
@@ -129,7 +129,7 @@ cinco abas:
 
 Ao salvar (botão **Salvar** ou `Ctrl+S`), o programa percebe a mudança e
 aplica em até 2 segundos, sem reiniciar. No canto superior aparece se o mouse
-está conectado.
+está conectado e, no X6, a bateria (ou "Carregando", no cabo).
 
 A tela também abre sem a bandeja:
 
@@ -168,7 +168,8 @@ Dá para desligar a verificação na aba **Sobre**.
 - **Abrir log**: abre a pasta do log.
 - **Sair**: fecha o programa e volta o mouse para o perfil do dia a dia.
 
-O menu acompanha o idioma escolhido.
+O menu acompanha o idioma escolhido. No X6, o texto do ícone e a primeira linha
+do menu mostram a bateria, e um aviso aparece quando ela chega a 20%.
 
 ## Aviso na tela
 
@@ -302,6 +303,11 @@ Quem tem a versão anterior recebe o aviso em até um dia, ou na hora pelo
   leva a macro em três partes. Cada passo tem a ação (apertar/soltar), a espera
   em unidades de 10 ms e o código de tecla USB. Enviar as macros devolve os
   outros botões à função de fábrica.
+- **X6, bateria:** o mouse envia sozinho, cerca de uma vez por segundo, o
+  relatório de entrada `0x03` na coleção de página `0x000A`:
+  `03 10 40 <estado> <nível>`, com estado `01` = na bateria e `03` = carregando,
+  e nível de 0 a 10 (passos de 10%). A escala do nível foi conferida com o app
+  oficial só a 100%; o programa registra o valor cru no log a cada mudança.
 
 ## Problemas, ideias e pedidos
 

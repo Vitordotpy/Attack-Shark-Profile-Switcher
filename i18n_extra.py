@@ -671,3 +671,20 @@ EXTRA = {
         'Sem permissao para abrir {path}. Rode o install.sh (ele instala a regra udev do mouse) e reconecte o receptor.': 'Нет доступа к {path}. Запустите install.sh (он установит правило udev для мыши) и переподключите приёмник.',
     },
 }
+
+# added in 2.4.0
+EXTRA["zh"].update({
+    "Bateria {pct}%": "电量 {pct}%",
+    "Carregando": "充电中",
+    "Bateria baixa: {pct}%. Hora de carregar o mouse.": "电量低：{pct}%。请给鼠标充电。",
+})
+EXTRA["ja"].update({
+    "Bateria {pct}%": "バッテリー {pct}%",
+    "Carregando": "充電中",
+    "Bateria baixa: {pct}%. Hora de carregar o mouse.": "バッテリー残量が少なくなっています: {pct}%。マウスを充電してください。",
+})
+EXTRA["ru"].update({
+    "Bateria {pct}%": "Батарея {pct}%",
+    "Carregando": "Зарядка",
+    "Bateria baixa: {pct}%. Hora de carregar o mouse.": "Низкий заряд: {pct}%. Пора зарядить мышь.",
+})
